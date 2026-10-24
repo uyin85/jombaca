@@ -1,0 +1,45 @@
+# Jom Baca HQ: satu Worker untuk laman jualan, app, API dan cron.
+# Deploy tanpa CLI: Cloudflare Dashboard → Workers & Pages → Create → Import a repository (GitHub).
+name = "jombaca"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jombaca"
+database_id = "87f550d9-abda-48fa-96bf-a295826def6c"
+
+# R2 untuk simpan video Flow (sudah dicipta)
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "jombaca-media"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[vars]
+# Kosongkan untuk guna domain workers.dev automatik. Isi jika guna domain sendiri, cth "https://jombaca.my"
+SITE_URL = ""
+TOYYIB_SANDBOX = "0"
+
+# RAHSIA (tetapkan di Dashboard → Worker → Settings → Variables and Secrets → Add → Secret):
+#  ADMIN_KEY          kata laluan papan admin /admin
+#  BRAIN_KEY          kunci API untuk agen AI (Modal / GitHub Actions / Hermes)
+#  FLOW_KEY           (pilihan) kunci untuk sambungan Google Flow
+#  TOYYIB_SECRET, TOYYIB_CATEGORY            ToyyibPay
+#  BREVO_API_KEY  atau  RESEND_API_KEY       emel
+#  TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID      notifikasi kepada anda
+#  TELEGRAM_CHANNEL_ID                       (pilihan) auto-post ke saluran
+#  THREADS_USER_ID, THREADS_TOKEN            (pilihan) auto-post Threads
+#  FB_PAGE_ID, FB_PAGE_TOKEN                 (pilihan) auto-post Facebook Page

@@ -1,0 +1,39 @@
+name: Otak Jom Baca (GitHub Actions)
+# Jalan setiap jam sebagai sandaran kepada Modal. Selamat dijalankan serentak:
+# HQ guna "claim" supaya setiap agen hanya jalan sekali bagi setiap slot.
+on:
+  schedule:
+    - cron: "20 * * * *"
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Nama agen untuk dijalankan sekarang (ceo, social, creative, marketing, leads, affiliate, product, reflect). Kosong = ikut jadual."
+        required: false
+        default: ""
+permissions:
+  contents: read
+  issues: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Jalankan agen
+        env:
+          HQ_URL: ${{ secrets.HQ_URL }}
+          BRAIN_KEY: ${{ secrets.BRAIN_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_COMPAT_BASE: ${{ secrets.OPENAI_COMPAT_BASE }}
+          OPENAI_COMPAT_KEY: ${{ secrets.OPENAI_COMPAT_KEY }}
+          OPENAI_COMPAT_MODEL: ${{ secrets.OPENAI_COMPAT_MODEL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          INPUT_AGENT: ${{ inputs.agent }}
+        run: |
+          if [ -z "$HQ_URL" ] || [ -z "$BRAIN_KEY" ]; then echo "HQ_URL / BRAIN_KEY belum ditetapkan dalam GitHub Secrets. Langkau."; exit 0; fi
+          if [ -n "$INPUT_AGENT" ]; then python -m brain.run agent "$INPUT_AGENT"; else python -m brain.run tick; fi

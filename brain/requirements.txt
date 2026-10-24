@@ -1,0 +1,2 @@
+# Otak hanya guna pustaka standard Python. modal diperlukan untuk deploy ke Modal sahaja.
+modal>=1.0

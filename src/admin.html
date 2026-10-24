@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jom Baca HQ</title>
+<meta name="robots" content="noindex">
+<style>
+:root{--bg:#f5f3fb;--card:#fff;--ink:#231d45;--mut:#6f6a8a;--line:#e6e1f5;--pri:#5b3df5;--ok:#13a463;--warn:#e08a00;--bad:#d9304f}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14112a;--card:#1f1a3d;--ink:#eeeaff;--mut:#a29cc6;--line:#332c5c}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header b{font-size:16px}nav{display:flex;gap:4px;overflow-x:auto;flex:1}nav button{white-space:nowrap}
+button,.b{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;padding:6px 10px;cursor:pointer;text-decoration:none;display:inline-block}
+button.on{background:var(--pri);color:#fff;border-color:var(--pri)}button.p{background:var(--pri);color:#fff;border-color:var(--pri)}button.g{background:var(--ok);color:#fff;border-color:var(--ok)}button.r{color:var(--bad)}
+main{padding:16px;max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.kpi b{display:block;font-size:24px}.kpi small{color:var(--mut)}
+h2{font-size:17px;margin:4px 0 10px}h3{font-size:15px;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:6px;text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600;position:sticky;top:0;background:var(--card)}
+.tw{overflow:auto;max-height:70vh}.mut{color:var(--mut)}.tag{display:inline-block;border-radius:8px;padding:1px 7px;font-size:12px;background:var(--line)}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.badc{color:var(--bad)}
+input,select,textarea{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:6px 8px;max-width:100%}
+textarea{width:100%;min-height:70px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);padding:8px;border-radius:8px;max-height:260px;overflow:auto;font-size:12px;margin:4px 0}
+.chart{display:flex;align-items:flex-end;gap:3px;height:120px}.chart div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:10px;color:var(--mut)}.chart i{width:100%;background:var(--pri);border-radius:4px 4px 0 0;min-height:1px}.chart i.l{background:#9b8cff}
+#login{max-width:360px;margin:12vh auto}
+.todo a{cursor:pointer;color:var(--pri)}
+</style>
+</head>
+<body>
+<div id="login" class="card" style="display:none">
+  <h2>🔐 Jom Baca HQ</h2><p class="mut">Masukkan ADMIN_KEY (yang anda tetapkan dalam Cloudflare → Worker → Settings → Variables).</p>
+  <div class="row"><input id="k" type="password" placeholder="ADMIN_KEY" style="flex:1"><button class="p" id="kb">Masuk</button></div><p id="ke" class="badc"></p>
+</div>
+<header id="hdr" style="display:none"><b>📚 Jom Baca HQ</b><nav id="nav"></nav><button id="out">Keluar</button></header>
+<main id="main"></main>
+<script>
+const $=s=>document.querySelector(s);let KEY='';try{KEY=localStorage.getItem('hq_key')||''}catch(e){}
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rm=s=>'RM'+((+s||0)/100).toFixed(2).replace(/\.00$/,'');
+const dt=t=>t?new Date(+t).toLocaleString('ms-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'x-admin-key':KEY,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});if(r.status===401){logout();throw new Error('auth')}return r.json()}
+const act=(a,o={})=>api('/api/admin/act',{a,...o});
+const list=(t,f='')=>api('/api/admin/list?t='+t+'&f='+f).then(j=>j.rows||[]);
+function logout(){KEY='';try{localStorage.removeItem('hq_key')}catch(e){}$('#hdr').style.display='none';$('#main').innerHTML='';$('#login').style.display='block'}
+$('#kb').onclick=async()=>{KEY=$('#k').value.trim();try{await api('/api/admin/overview');try{localStorage.setItem('hq_key',KEY)}catch(e){}boot()}catch(e){$('#ke').textContent='Kunci salah.'}};
+$('#out').onclick=logout;
+const TABS=[['home','📊 Ringkasan'],['todo','✅ Tugas Saya'],['posts','📣 Kandungan'],['flow','🎬 Flow'],['leads','🧲 Leads'],['sales','💰 Jualan'],['aff','🤝 Affiliate'],['ab','🧪 A/B'],['prod','📚 Produk'],['brain','🧠 Otak AI'],['set','⚙️ Tetapan']];
+let tab='home';
+function nav(){$('#nav').innerHTML=TABS.map(([k,l])=>`<button data-t="${k}" class="${k===tab?'on':''}">${l}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;nav();render()})}
+function boot(){$('#login').style.display='none';$('#hdr').style.display='flex';nav();render()}
+function table(rows,cols,actions){if(!rows.length)return '<p class="mut">Tiada data.</p>';return `<div class="tw"><table><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}${actions?'<th></th>':''}</tr>${rows.map((r,i)=>`<tr>${cols.map(c=>`<td>${c[2]?c[2](r[c[0]],r):esc(r[c[0]])}</td>`).join('')}${actions?`<td style="white-space:nowrap">${actions(r,i)}</td>`:''}</tr>`).join('')}</table></div>`}
+function bind(root,handlers){root.querySelectorAll('[data-a]').forEach(el=>el.onclick=async()=>{const h=handlers[el.dataset.a];if(!h)return;el.disabled=true;try{await h(el.dataset.id,el)}catch(e){alert(e.message)}el.disabled=false})}
+const wa=(phone,msg)=>`https://wa.me/${phone}?text=${encodeURIComponent(msg||'')}`;
+const copy=t=>{try{navigator.clipboard.writeText(t)}catch(e){}};
+async function render(){const m=$('#main');m.innerHTML='<p class="mut">Memuatkan…</p>';try{await VIEWS[tab](m)}catch(e){if(e.message!=='auth')m.innerHTML='<p class="badc">Ralat: '+esc(e.message)+'</p>'}}
+const VIEWS={
+async home(m){const o=await api('/api/admin/overview');const t=o.today,w=o.d7,mo=o.d28;const cr=(a,b)=>b?(100*a/b).toFixed(1)+'%':'-';
+ const ser=o.series;const mx=Math.max(1,...ser.map(x=>x.sale));const ml=Math.max(1,...ser.map(x=>x.lead));
+ const I=o.integrations;const st=(k,l)=>`<span class="tag ${I[k]?'ok':'warn'}">${I[k]?'✓':'✗'} ${l}</span>`;
+ const tg=+o.s.daily_sales_target;
+ m.innerHTML=`<div class="grid">
+ <div class="card kpi"><small>Jualan hari ini</small><b class="${t.sale>=tg?'ok':''}">${t.sale} / ${tg}</b><small>${rm(t.rev)}</small></div>
+ <div class="card kpi"><small>7 hari</small><b>${w.sale}</b><small>${rm(w.rev)}</small></div>
+ <div class="card kpi"><small>28 hari</small><b>${mo.sale}</b><small>${rm(mo.rev)}</small></div>
+ <div class="card kpi"><small>Lead hari ini / 7h</small><b>${t.lead} / ${w.lead}</b><small>lawatan ${t.lp_view} / ${w.lp_view}</small></div>
+ <div class="card kpi"><small>Kadar tukar 7h</small><b>${cr(w.sale,w.lp_view)}</b><small>lead→jual ${cr(w.sale,w.lead)}</small></div>
+ <div class="card kpi"><small>App dibuka 7h</small><b>${w['app:open']}</b><small>paywall ${w['app:paywall']} · klik beli ${w['app:buy_click']}</small></div></div>
+ <div class="card"><h2>28 hari: jualan (ungu) &amp; lead (lembayung)</h2><div class="chart">${ser.map(x=>`<div title="${x.day}: ${x.sale} jualan, ${x.lead} lead"><span>${x.sale||''}</span><i style="height:${70*x.sale/mx}%"></i><i class="l" style="height:${25*x.lead/ml}%"></i><span>${x.day.slice(8)}</span></div>`).join('')}</div></div>
+ <div class="card todo"><h2>Perlu perhatian anda</h2><ul>
+ <li><a data-go="todo">${o.todo.manual_posts} post manual</a> (TikTok/Reels/Shorts) menunggu dimuat naik</li>
+ <li><a data-go="todo">${o.todo.hot_leads} lead panas</a> untuk WhatsApp</li>
+ <li><a data-go="aff">${o.todo.payouts} komisen</a> belum dibayar (${rm(o.todo.payout_amt)})</li>
+ <li><a data-go="todo">${o.todo.proposals} cadangan</a> daripada agen</li>
+ <li><a data-go="flow">${o.todo.flow_queue} video Flow</a> dalam giliran</li>
+ ${o.todo.failed_posts?`<li class="badc"><a data-go="posts">${o.todo.failed_posts} post gagal</a> (3 hari)</li>`:''}</ul></div>
+ <div class="card"><h2>Pelan hari ini ${o.plan?`<span class="mut">(${o.plan.day})</span>`:''}</h2>${o.plan?`<pre>${esc(JSON.stringify(o.plan,null,1))}</pre>`:'<p class="mut">Belum ada. Agen CEO akan tulis pelan setiap pagi.</p>'}</div>
+ <div class="card"><h2>Integrasi</h2><div class="row">${st('toyyibpay','ToyyibPay')}${st('email','Emel')}${st('telegram','Telegram')}${st('threads','Threads')}${st('facebook','FB Page')}${st('tg_channel','Saluran Telegram')}${st('brain','Otak AI')}${st('r2','R2 media')}</div></div>`;
+ m.querySelectorAll('[data-go]').forEach(a=>a.onclick=()=>{tab=a.dataset.go;nav();render()})},
+async todo(m){const [posts,leads,props]=await Promise.all([list('posts','manual'),list('leads','hot'),list('proposals')]);
+ const open=props.filter(p=>p.status==='open');
+ m.innerHTML=`<div class="card"><h2>📌 Post manual (${posts.length})</h2><p class="mut">Salin teks, muat turun video, post di platform, kemudian tekan "Sudah post". Letak pautan <b>${location.origin}/b/tiktok</b> di bio TikTok (tukar tiktok → reels/shorts ikut platform) supaya jualan dapat dijejak.</p>${table(posts,[['platform','Platform',v=>`<span class="tag">${esc(v)}</span>`],['scheduled_at','Masa',dt],['angle','Sudut'],['body','Teks',(v,r)=>`<pre>${esc(v)}</pre>`],['media_url','Media',v=>v?`<a class="b" href="${esc(v)}" target="_blank">🎬 video</a>`:'']],r=>`<button data-a="cp" data-id="${r.id}">Salin</button> <button class="g" data-a="done" data-id="${r.id}">Sudah post</button> <button data-a="skip" data-id="${r.id}">Langkau</button>`)}</div>
+ <div class="card"><h2>📱 Lead panas: WhatsApp (${leads.filter(l=>!l.contacted).length})</h2><p class="mut">Mesej dicadang oleh agen Leads. Hantar secara peribadi, satu-satu. Jangan spam.</p>${table(leads.slice(0,60),[['name','Nama'],['stage','Tahap',v=>`<span class="tag">${esc(v)}</span>`],['score','Skor'],['child_age','Umur anak'],['src','Sumber'],['created','Masuk',dt],['wa_msg','Mesej cadangan',v=>`<span class="mut">${esc(v||'')}</span>`]],r=>`${r.contacted?'<span class="ok">✓ dihubungi</span> ':''}<a class="b" target="_blank" href="${wa(r.phone,r.wa_msg||('Hai '+(r.name||'')+', saya dari Jom Baca! Ada apa-apa saya boleh bantu tentang aplikasi membaca untuk anak?'))}">WhatsApp</a> <button data-a="ct" data-id="${r.id}">Tanda dihubungi</button>`)}</div>
+ <div class="card"><h2>💡 Cadangan agen (${open.length})</h2>${table(open,[['created','Bila',dt],['agent','Agen'],['kind','Jenis'],['title','Tajuk'],['body','Butiran',v=>`<pre>${esc(v)}</pre>`]],r=>`<button class="g" data-a="pa" data-id="${r.id}">Terima</button> <button data-a="pr" data-id="${r.id}">Tolak</button>`)}</div>`;
+ bind(m,{cp:async id=>{const j=await act('post_text',{id});copy(j.text);alert('Disalin ✓')},done:async id=>{const u=prompt('Pautan post (pilihan):')||'';await act('post_manual_done',{id,url:u});render()},skip:async id=>{await act('post_update',{id,status:'skipped'});render()},ct:async id=>{await act('lead_update',{id,contacted:1,stage:'contacted'});render()},pa:async id=>{await act('proposal_status',{id,status:'accepted'});render()},pr:async id=>{await act('proposal_status',{id,status:'rejected'});render()}})},
+async posts(m){const [rows,angles]=await Promise.all([list('posts'),list('angles')]);
+ m.innerHTML=`<div class="card"><h2>Sudut kandungan (prestasi)</h2>${table(angles,[['name','Sudut'],['description','Huraian'],['posts','Post'],['clicks','Klik'],['leads','Lead'],['sales','Jualan'],['status','Status']])}</div>
+ <div class="card"><h2>Giliran &amp; sejarah post</h2>${table(rows,[['id','#'],['platform','Platform'],['status','Status',(v,r)=>`<span class="tag ${v==='posted'?'ok':v==='failed'?'badc':''}">${esc(v)}</span>${r.error?`<div class="badc" style="font-size:11px">${esc(r.error)}</div>`:''}`],['scheduled_at','Jadual',dt],['angle','Sudut'],['body','Teks',v=>`<div style="max-width:420px">${esc(String(v).slice(0,260))}</div>`],['clicks','Klik'],['leads','Lead'],['sales','Jual']],r=>`<button data-a="ed" data-id="${r.id}">Edit</button> ${['scheduled','failed','manual'].includes(r.status)?`<button data-a="sk" data-id="${r.id}">Langkau</button>`:''} ${r.status==='failed'?`<button data-a="rt" data-id="${r.id}">Cuba semula</button>`:''}`)}</div>`;
+ const by=Object.fromEntries(rows.map(r=>[r.id,r]));
+ bind(m,{ed:async id=>{const t=prompt('Edit teks (guna {LINK} untuk pautan jejak):',by[id].body);if(t!=null){await act('post_update',{id,body:t});render()}},sk:async id=>{await act('post_update',{id,status:'skipped'});render()},rt:async id=>{await act('post_update',{id,status:'scheduled',scheduled_at:Date.now()});render()}})},
+async flow(m){const rows=await list('flow');
+ m.innerHTML=`<div class="card"><h2>🎬 Giliran Google Flow</h2><p class="mut">Sambungan Chrome / flow-mcp anda boleh tarik kerja dari <code>GET ${location.origin}/api/flow/next?account=A</code> (header <code>x-flow-key</code>) dan lapor <code>POST /api/flow/done {id, video_url}</code>. Bila siap, post auto dibuat untuk platform yang ditetapkan. Atau buat manual: salin prompt → Flow → tampal URL video.</p>
+ ${table(rows,[['id','#'],['account','Akaun'],['status','Status',v=>`<span class="tag">${esc(v)}</span>`],['title','Tajuk'],['angle','Sudut'],['prompt','Prompt',v=>`<pre>${esc(v)}</pre>`],['caption','Kapsyen',v=>`<pre>${esc(v)}</pre>`],['video_url','Video',v=>v?`<a href="${esc(v)}" target="_blank">buka</a>`:'']],r=>`<button data-a="cp" data-id="${r.id}">Salin prompt</button> ${r.status!=='done'?`<button class="g" data-a="dn" data-id="${r.id}">Siap (URL)</button> <button data-a="cx" data-id="${r.id}">Batal</button>`:''}`)}</div>`;
+ const by=Object.fromEntries(rows.map(r=>[r.id,r]));
+ bind(m,{cp:id=>copy(by[id].prompt),dn:async id=>{const u=prompt('URL video awam (mp4) yang dijana:');if(!u)return;const r=await fetch('/api/flow/done',{method:'POST',headers:{'content-type':'application/json','x-flow-key':prompt('FLOW_KEY atau BRAIN_KEY:')||''},body:JSON.stringify({id,video_url:u})});alert(r.ok?'✓ Post dijadualkan':'Gagal: kunci salah?');render()},cx:async id=>{await act('flow_update',{id,status:'cancelled'});render()}})},
+async leads(m){const rows=await list('leads');
+ m.innerHTML=`<div class="card"><h2>🧲 Semua lead (${rows.length})</h2>${table(rows,[['id','#'],['created','Masuk',dt],['name','Nama'],['phone','Telefon',v=>v?`<a href="${wa(v,'')}" target="_blank">${esc(v)}</a>`:''],['email','Emel'],['child_age','Umur'],['stage','Tahap'],['score','Skor'],['src','Sumber'],['ref','Ref'],['bought','Beli',v=>v?'✅':''],['unsub','Unsub',v=>v?'🚫':'']])}</div>`},
+async sales(m){const [orders,coupons]=await Promise.all([list('orders'),list('coupons')]);
+ m.innerHTML=`<div class="card"><h2>💰 Pesanan</h2>${table(orders,[['created','Bila',dt],['id','ID'],['name','Nama'],['phone','Telefon'],['email','Emel'],['amount','Jumlah',rm],['coupon','Kupon'],['src','Sumber'],['ref','Ref'],['status','Status',v=>`<span class="tag ${v==='paid'?'ok':''}">${esc(v)}</span>`],['license','Lesen']],r=>r.status==='pending'?`<button class="g" data-a="pd" data-id="${r.id}">Tanda dibayar</button>`:r.status==='paid'?`<button class="r" data-a="rf" data-id="${r.id}">Refund</button> <button data-a="lr" data-id="${r.license}">Reset peranti</button>`:'')}</div>
+ <div class="card"><h2>🏷️ Kupon</h2><div class="row"><input id="cc" placeholder="KOD"><input id="cp" type="number" placeholder="% diskaun" style="width:110px"><input id="co" type="number" placeholder="atau RM off" style="width:110px"><input id="ch" type="number" placeholder="tamat (jam)" style="width:110px"><input id="cm" type="number" placeholder="had guna" style="width:100px"><button class="p" id="cadd">Tambah</button></div><p class="mut">Harga tidak akan turun di bawah floor_sen (Tetapan).</p>${table(coupons,[['code','Kod'],['pct','%'],['off','Off',v=>v?rm(v):''],['expires','Tamat',dt],['used','Guna'],['max_uses','Had'],['agent','Oleh'],['note','Nota']],r=>`<button class="r" data-a="cd" data-id="${esc(r.code)}">Padam</button>`)}</div>`;
+ $('#cadd').onclick=async()=>{await act('coupon_add',{code:$('#cc').value,pct:+$('#cp').value,off:Math.round(+$('#co').value*100),hours:+$('#ch').value||0,max_uses:+$('#cm').value||0});render()};
+ bind(m,{pd:async id=>{if(confirm('Sahkan pesanan '+id+' sudah dibayar? Lesen akan dihantar.')){await act('order_paid',{id});render()}},rf:async id=>{if(confirm('Refund & batalkan lesen '+id+'?')){await act('order_refund',{id});render()}},lr:async key=>{await act('lic_reset',{key});alert('✓ Peranti direset')},cd:async id=>{await act('coupon_del',{id});render()}})},
+async aff(m){const [affs,comms]=await Promise.all([list('affiliates'),list('commissions')]);const pend=comms.filter(c=>c.status==='pending');
+ m.innerHTML=`<div class="card"><h2>🤝 Affiliate (${affs.length})</h2><p class="mut">Pautan pendaftaran untuk dikongsi: <b>${location.origin}/affiliate</b>. Setiap pembeli juga auto jadi affiliate.</p>${table(affs,[['code','Kod'],['name','Nama'],['handle','Akaun sosial'],['phone','Telefon'],['payout','Bayaran ke'],['rate','%'],['buyer','Pembeli',v=>v?'✓':''],['sales','Jualan'],['owed','Terhutang',rm],['status','Status']],r=>r.status==='active'?`<button class="r" data-a="ab" data-id="${esc(r.code)}">Gantung</button>`:`<button data-a="aa" data-id="${esc(r.code)}">Aktifkan</button>`)}</div>
+ <div class="card"><h2>💸 Komisen belum bayar: ${rm(pend.reduce((s,c)=>s+c.amount,0))}</h2>${table(comms,[['created','Bila',dt],['code','Kod'],['name','Nama'],['payout','Bayar ke'],['order_id','Pesanan'],['amount','Jumlah',rm],['status','Status']],r=>r.status==='pending'?`<button class="g" data-a="cp" data-id="${r.id}">Tanda dibayar</button>`:'')}</div>`;
+ bind(m,{ab:async id=>{await act('aff_status',{id,status:'suspended'});render()},aa:async id=>{await act('aff_status',{id,status:'active'});render()},cp:async id=>{await act('comm_paid',{id});render()}})},
+async ab(m){const rows=await list('variants');
+ m.innerHTML=`<div class="card"><h2>🧪 Eksperimen laman jualan (Thompson sampling)</h2><p class="mut">Setiap lawatan memilih satu varian per slot secara automatik; varian yang lebih banyak menghasilkan lead/jualan akan lebih kerap dipaparkan. <b>p_best</b> = kebarangkalian varian itu terbaik. Agen Marketing bersarakan yang kalah &amp; cipta pencabar baharu setiap minggu.</p>
+ <div class="row"><select id="vs"><option>headline</option><option>sub</option><option>cta</option></select><input id="vt" placeholder="Teks varian baharu" style="flex:1"><button class="p" id="vadd">Tambah</button></div>
+ ${table(rows,[['id','#'],['slot','Slot'],['text','Teks',v=>`<div style="max-width:480px">${esc(v)}</div>`],['views','Papar'],['leads','Lead'],['conv','Jual'],['rate','Skor/papar'],['p_best','p_best',v=>v==null?'':`<b>${(v*100).toFixed(0)}%</b>`],['agent','Oleh'],['status','Status']],r=>r.status==='live'?`<button data-a="rt" data-id="${r.id}">Bersara</button>`:`<button data-a="lv" data-id="${r.id}">Hidupkan</button>`)}</div>`;
+ $('#vadd').onclick=async()=>{await act('variant_add',{slot:$('#vs').value,text:$('#vt').value});render()};
+ bind(m,{rt:async id=>{await act('variant_status',{id,status:'retired'});render()},lv:async id=>{await act('variant_status',{id,status:'live'});render()}})},
+async prod(m){const [packs,app,tst]=await Promise.all([list('packs'),list('app'),list('testimonials')]);
+ m.innerHTML=`<div class="card"><h2>📚 Pek cerita mingguan (agen Produk)</h2>${table(packs,[['created','Bila',dt],['title','Tajuk'],['icon','Ikon'],['items','Item',v=>`<pre>${esc((JSON.parse(v||'[]')).join('\n'))}</pre>`],['status','Status',v=>`<span class="tag ${v==='live'?'ok':''}">${esc(v)}</span>`],['note','Nota']],r=>r.status==='live'?`<button data-a="pr" data-id="${r.id}">Tarik balik</button>`:`<button class="g" data-a="pl" data-id="${r.id}">Terbitkan</button>`)}</div>
+ <div class="card"><h2>📈 Telemetri app &amp; sumber (14 hari)</h2>${table(app,[['k','Kunci'],['n','Jumlah']])}</div>
+ <div class="card"><h2>💬 Testimoni (hanya yang sebenar)</h2><p class="mut">Hanya testimoni berstatus <i>approved</i> dipaparkan di laman jualan. Masukkan testimoni sebenar daripada pelanggan (dengan izin mereka).</p><div class="row"><input id="tn" placeholder="Nama (cth: Puan Aina, Shah Alam)"><input id="tt" placeholder="Testimoni" style="flex:1"><button class="p" id="tadd">Tambah</button></div>${table(tst,[['created','Bila',dt],['name','Nama'],['text','Teks'],['status','Status']],r=>r.status!=='approved'?`<button class="g" data-a="ta" data-id="${r.id}">Lulus</button>`:`<button data-a="th" data-id="${r.id}">Sembunyi</button>`)}</div>`;
+ $('#tadd').onclick=async()=>{await act('testimonial_add',{name:$('#tn').value,text:$('#tt').value});render()};
+ bind(m,{pr:async id=>{await act('pack_status',{id,status:'review'});render()},pl:async id=>{await act('pack_status',{id,status:'live'});render()},ta:async id=>{await act('testimonial_status',{id,status:'approved'});render()},th:async id=>{await act('testimonial_status',{id,status:'hidden'});render()}})},
+async brain(m){const [runs,ls,pr,plans,em]=await Promise.all([list('runs'),list('learnings'),list('prompts'),list('plans'),list('emails')]);
+ m.innerHTML=`<div class="card"><h2>🧠 Arahan pemilik</h2><p class="mut">Tulis arahan / pengetahuan untuk semua agen (cth: "Jangan guna perkataan 'genius'", "Fokus ibu bekerja di Lembah Klang"). Ia masuk ke memori agen dengan keutamaan tinggi.</p><div class="row"><input id="ln" placeholder="Arahan…" style="flex:1"><button class="p" id="ladd">Tambah</button></div></div>
+ <div class="card"><h2>Larian agen</h2>${table(runs,[['ts','Bila',dt],['agent','Agen'],['status','Status',v=>`<span class="tag ${v==='ok'?'ok':'badc'}">${esc(v)}</span>`],['llm','LLM'],['summary','Ringkasan',v=>`<pre>${esc(v)}</pre>`],['error','Ralat',v=>v?`<pre class="badc">${esc(v)}</pre>`:'']])}</div>
+ <div class="card"><h2>Memori / pelajaran (self-improve)</h2>${table(ls,[['created','Bila',dt],['agent','Agen'],['text','Pelajaran'],['evidence','Bukti'],['score','Skor'],['status','Status']],r=>r.status==='active'?`<button data-a="lr" data-id="${r.id}">Bersara</button>`:'')}</div>
+ <div class="card"><h2>Prompt yang dikembangkan agen</h2>${table(pr,[['created','Bila',dt],['agent','Untuk agen'],['addendum','Tambahan prompt',v=>`<pre>${esc(v)}</pre>`],['reason','Sebab'],['active','Aktif',v=>v?'✓':'']],r=>r.active?`<button data-a="po" data-id="${r.id}">Matikan</button>`:'')}</div>
+ <div class="card"><h2>Pelan harian</h2>${table(plans,[['day','Hari'],['json','Pelan',v=>`<pre>${esc(JSON.stringify(JSON.parse(v||'{}'),null,1))}</pre>`]])}</div>
+ <div class="card"><h2>Emel</h2>${table(em,[['created','Bila',dt],['to_email','Kepada'],['kind','Jenis'],['subject','Subjek'],['send_at','Jadual',dt],['status','Status'],['clicks','Klik'],['error','Ralat']])}</div>`;
+ $('#ladd').onclick=async()=>{await act('learning_add',{text:$('#ln').value});render()};
+ bind(m,{lr:async id=>{await act('learning_status',{id,status:'retired'});render()},po:async id=>{await act('prompt_off',{id});render()}})},
+async set(m){const rows=await list('settings');
+ const help={price_sen:'Harga dalam sen (2000 = RM20)',floor_sen:'Harga minimum selepas kupon (agen tak boleh turun bawah ini)',aff_rate_pct:'% komisen affiliate',guarantee_days:'Hari jaminan wang dikembalikan (0 = tak papar). Hanya hidupkan jika anda sanggup refund.',auto_post:'1 = agen boleh auto-post ke Threads/FB/Telegram',auto_variants:'1 = agen boleh tukar varian laman jualan',auto_publish_packs:'1 = pek cerita yang lulus semakan keselamatan terus diterbitkan',auto_coupons:'1 = agen boleh cipta kupon promo (dalam had floor)',max_posts_day:'Had post sehari setiap platform',daily_sales_target:'Sasaran jualan sehari',flow_accounts:'Nama akaun Flow, dipisah koma',flow_credits_month:'Kredit sebulan setiap akaun',flow_cost:'Kredit per video',wa_number:'No WhatsApp sokongan (601xxxxxxxx)',support_email:'Emel sokongan',email_from:'Pengirim emel, cth: Jom Baca <hello@domain.com> (mesti disahkan di Brevo/Resend)',manual_pay_text:'Teks bila ToyyibPay belum disetup',promo:'Promo aktif (diurus agen)',aff_swipe:'Bahan promosi affiliate (diurus agen)',nurture_tpl:'Template emel nurture (diurus agen; kosong = lalai)'};
+ m.innerHTML=`<div class="card"><h2>⚙️ Tetapan</h2>${table(rows,[['k','Kunci',v=>`<b>${esc(v)}</b><div class="mut" style="font-size:12px;max-width:320px">${esc(help[v]||'')}</div>`],['v','Nilai',(v,r)=>String(v).length>80?`<textarea data-k="${esc(r.k)}">${esc(v)}</textarea>`:`<input data-k="${esc(r.k)}" value="${esc(v)}" style="width:100%">`]],r=>`<button class="p" data-a="sv" data-id="${esc(r.k)}">Simpan</button>`)}</div>
+ <div class="card"><h2>Ujian</h2><div class="row"><input id="te" placeholder="emel anda"><button data-a="te">Hantar emel ujian</button><button data-a="tt">Ujian Telegram</button><button data-a="tk">Jalankan cron sekarang (post + emel)</button></div></div>`;
+ bind(m,{sv:async k=>{const el=m.querySelector(`[data-k="${k}"]`);await act('setting_set',{k,v:el.value});el.style.borderColor='var(--ok)'},te:async()=>{const j=await act('test_email',{to:$('#te').value});alert(j.ok?'✓ Dihantar':'Gagal: '+j.error)},tt:async()=>{const j=await act('test_tg');alert(j.ok?'✓ Telegram OK':'Gagal: semak TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID')},tk:async()=>{await act('tick');alert('✓ Cron dijalankan')}})},
+};
+if(KEY)api('/api/admin/overview').then(boot).catch(()=>logout());else logout();
+</script>
+</body>
+</html>

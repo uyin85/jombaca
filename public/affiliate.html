@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Affiliate Jom Baca!</title>
+<meta name="description" content="Kongsi Jom Baca! dengan ibu bapa lain dan dapat komisen setiap jualan.">
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style>
+  main { padding: 30px 0 60px; }
+  .panel { margin-top: 18px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .stats div { background: var(--sky); border-radius: 14px; padding: 12px; text-align: center; }
+  .stats b { display: block; font: 600 28px/1 Fredoka, sans-serif; }
+  .link { font-size: 16px; background: var(--sky); border-radius: 12px; padding: 12px; word-break: break-all; margin-top: 10px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .sw { border: 2px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 10px; white-space: pre-wrap; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; } td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .perks { margin: 14px 0 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a href="/" class="small">← Jom Baca!</a>
+  <div id="signup">
+    <h1 style="margin-top:12px">Kongsi Jom Baca!, dapat komisen setiap jualan</h1>
+    <p class="muted" style="margin-top:12px">Sesuai untuk ibu bapa, cikgu tadika, guru pemulihan dan pencipta kandungan keluarga. Setiap kali seseorang beli melalui pautan anda, anda dapat komisen <b id="per">40%</b>.</p>
+    <ul class="perks"><li>Pautan anda dijejak selama 30 hari</li><li>Bahan promosi siap (kapsyen &amp; skrip video) dikemas kini setiap minggu</li><li>Papan untuk lihat klik, jualan dan komisen</li><li>Bayaran komisen setiap bulan melalui DuitNow / akaun bank</li></ul>
+    <div class="panel">
+      <form id="f" novalidate>
+        <label class="f" for="n">Nama</label><input class="in" id="n" autocomplete="name">
+        <label class="f" for="e">Emel</label><input class="in" id="e" type="email" autocomplete="email">
+        <label class="f" for="p">No. telefon</label><input class="in" id="p" type="tel" autocomplete="tel">
+        <label class="f" for="h">Akaun media sosial utama (TikTok / FB / IG / Threads)</label><input class="in" id="h" placeholder="@akaunanda">
+        <div class="hp" aria-hidden="true"><input id="hp" tabindex="-1" autocomplete="off"></div>
+        <div class="err" id="err" role="alert"></div>
+        <button class="btn" style="width:100%" id="b">Daftar sebagai affiliate</button>
+      </form>
+    </div>
+  </div>
+  <div id="dash" style="display:none"></div>
+</main>
+<script>
+(async function () {
+  const $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const rm = s => "RM" + ((+s || 0) / 100).toFixed(2).replace(/\.00$/, "");
+  async function dash(code, k) {
+    const d = await (await fetch(`/api/aff/me?code=${encodeURIComponent(code)}&k=${encodeURIComponent(k)}`)).json();
+    if (!d.ok) { $("err").textContent = "Pautan papan tidak sah. Daftar menggunakan emel anda untuk terima pautan semula."; return; }
+    try { localStorage.setItem("jb_aff", JSON.stringify({ code, k })); } catch (e) {}
+    const c = Object.fromEntries((d.comm || []).map(x => [x.status, x]));
+    $("signup").style.display = "none"; $("dash").style.display = "block";
+    $("dash").innerHTML = `<h1 style="margin-top:12px">Hai ${esc((d.name || "").split(" ")[0])} 👋</h1>
+      <div class="panel"><h3>Pautan anda</h3><div class="link">${esc(d.link)}</div>
+        <div class="row"><button class="btn" id="cp">Salin pautan</button><a class="btn alt" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent("Anak saya belajar membaca guna Jom Baca! 10 minit sehari, suku kata demi suku kata. Cuba percuma: " + d.link)}">Kongsi WhatsApp</a></div>
+        <p class="small muted" style="margin-top:10px">Harga ${esc(d.price)} · komisen anda ${esc(d.per_sale)} setiap jualan (${d.rate}%).</p></div>
+      <div class="stats"><div><b>${d.clicks}</b>klik</div><div><b>${d.sales}</b>jualan</div><div><b>${rm((c.pending || {}).amt)}</b>belum dibayar</div></div>
+      <div class="panel"><h3>Bayaran komisen ke</h3><p class="small muted">No. DuitNow / nama bank + no. akaun + nama pemegang akaun.</p><input class="in" id="po" value="${esc(d.payout || "")}" style="margin-top:8px"><div class="row"><button class="btn alt" id="pos">Simpan</button><span id="posm" class="small"></span></div>
+        <p class="small muted" style="margin-top:10px">Jumlah telah dibayar: ${rm((c.paid || {}).amt)}</p></div>
+      ${d.swipe && d.swipe.length ? `<div class="panel"><h3>Bahan promosi minggu ini</h3><p class="small muted">Salin dan tampal. Pautan anda sudah dimasukkan.</p>${d.swipe.map((s, i) => `<div class="sw"><b>${esc(s.platform || "")}</b>\n${esc(s.text)}</div><button class="btn alt" style="margin-top:6px;padding:8px 14px;font-size:15px" data-i="${i}">Salin</button>`).join("")}</div>` : ""}
+      ${d.leaderboard && d.leaderboard.length ? `<div class="panel"><h3>Affiliate terbaik 30 hari</h3><table>${d.leaderboard.map((r, i) => `<tr><td>${i + 1}. ${esc(r.name)}</td><td style="text-align:right">${r.n} jualan</td></tr>`).join("")}</table></div>` : ""}`;
+    $("cp").onclick = () => { try { navigator.clipboard.writeText(d.link); $("cp").textContent = "Disalin ✓"; } catch (e) {} };
+    $("pos").onclick = async () => { const r = await (await fetch("/api/aff/payout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code, k, payout: $("po").value }) })).json(); $("posm").textContent = r.ok ? "Disimpan ✓" : "Gagal"; };
+    document.querySelectorAll("[data-i]").forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(d.swipe[+b.dataset.i].text); b.textContent = "Disalin ✓"; } catch (e) {} });
+  }
+  let saved = null; try { saved = JSON.parse(localStorage.getItem("jb_aff") || "null"); } catch (e) {}
+  const code = q.get("code") || (saved && saved.code), k = q.get("k") || (saved && saved.k);
+  if (code && k) dash(code, k);
+  fetch("/api/lp?lite=1").catch(() => {});
+  $("f").onsubmit = async e => {
+    e.preventDefault(); $("err").textContent = "";
+    const d = { name: $("n").value.trim(), email: $("e").value.trim(), phone: $("p").value.trim(), handle: $("h").value.trim(), hp: $("hp").value };
+    if (!d.name || !/^\S+@\S+\.\S+$/.test(d.email)) { $("err").textContent = "Sila isi nama dan emel yang sah."; return; }
+    $("b").disabled = true;
+    const r = await (await fetch("/api/aff/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d) })).json().catch(() => ({ ok: false, error: "Ralat rangkaian" }));
+    $("b").disabled = false;
+    if (!r.ok) { $("err").textContent = r.error || "Ralat"; return; }
+    if (r.existing) { $("err").style.color = "var(--t-green)"; $("err").textContent = r.msg; return; }
+    history.replaceState(null, "", `/affiliate?code=${r.code}&k=${r.k}`); dash(r.code, r.k);
+  };
+})();
+</script>
+</body>
+</html>

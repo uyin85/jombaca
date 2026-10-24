@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jom Baca! Anak boleh membaca, suku kata demi suku kata</title>
+<meta name="description" content="Aplikasi belajar membaca Bahasa Melayu untuk anak 4 hingga 8 tahun. Anak sebut, aplikasi dengar. 31 tahap dari vokal hingga cerita. RM20 sekali bayar.">
+<meta property="og:title" content="Jom Baca! Belajar membaca suku kata demi suku kata">
+<meta property="og:description" content="Anak sebut, aplikasi dengar dan beri bintang. 10 minit sehari. Cuba percuma.">
+<meta property="og:image" content="/app/icon-512.png">
+<meta name="theme-color" content="#e4f3ff">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style>
+  .promo { background: var(--ink); color: #fff; text-align: center; font-size: 15px; padding: 9px 16px; display: none; }
+  .promo b { color: #ffd566; }
+  header.top { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
+  .brand { display: flex; gap: 3px; text-decoration: none; }
+  .brand span { width: 30px; height: 34px; border-radius: 8px; color: #fff; display: inline-flex; align-items: center; justify-content: center; font: 600 20px/1 Fredoka, sans-serif; box-shadow: inset 0 -3px 0 rgba(0,0,0,.15); }
+  .top .btn { padding: 10px 16px; font-size: 16px; box-shadow: 0 4px 0 #0f8a50; }
+  .top .btn { white-space: nowrap; }
+  @media (max-width: 420px) { .brand span { width: 24px; height: 28px; font-size: 16px; border-radius: 7px; } .top .btn { padding: 9px 13px; font-size: 15px; } }
+
+  /* Hero: demo suku kata */
+  .hero { padding: 18px 0 40px; }
+  .hero h1 { max-width: 16ch; }
+  .hero .lead { font-size: 19px; margin-top: 14px; max-width: 56ch; color: var(--ink-soft); }
+  .play { margin-top: 26px; background: #fff; border-radius: var(--r-panel); padding: 20px 18px 22px; box-shadow: 0 10px 0 var(--sky-deep); }
+  .play-q { display: flex; align-items: center; gap: 14px; }
+  .play-q .pic { font-size: 64px; line-height: 1; width: 84px; text-align: center; }
+  .slots { display: flex; gap: 8px; }
+  .slot { min-width: 64px; height: 70px; border-radius: var(--r-tile); border: 3px dashed var(--line); display: flex; align-items: center; justify-content: center; font: 600 34px/1 Fredoka, sans-serif; color: var(--ink); }
+  .slot.full { border-style: solid; border-color: var(--t-green); background: #eafbf2; }
+  .tiles { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .play-msg { margin-top: 14px; font-weight: 700; min-height: 28px; }
+  .play.win .slots .slot { animation: pop .5s; }
+  @keyframes pop { 50% { transform: scale(1.12); } }
+  .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+  .trust { margin-top: 16px; font-size: 15px; color: var(--ink-soft); }
+
+  section { padding: 44px 0; }
+  section.white { background: #fff; }
+  .sec-lead { margin-top: 10px; color: var(--ink-soft); max-width: 58ch; }
+
+  /* Langkah: memang satu urutan */
+  .steps { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 14px; }
+  .steps li { display: grid; grid-template-columns: 54px 1fr; gap: 14px; align-items: start; }
+  .steps .n { width: 54px; height: 54px; border-radius: 14px; color: #fff; display: flex; align-items: center; justify-content: center; font: 600 26px/1 Fredoka, sans-serif; box-shadow: inset 0 -4px 0 rgba(0,0,0,.15); }
+  .steps h3 { margin-bottom: 2px; }
+
+  /* Tangga kurikulum */
+  .ladder { margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
+  .rung { display: flex; align-items: center; gap: 12px; border-radius: 16px; padding: 12px 14px; color: #fff; font-weight: 700; }
+  .rung small { font-weight: 400; opacity: .92; display: block; font-size: 14px; }
+  .rung .ic { font-size: 28px; width: 36px; text-align: center; }
+  .rung:nth-child(1) { background: var(--t-blue); margin-right: 32%; }
+  .rung:nth-child(2) { background: #ff7a45; margin-right: 24%; margin-left: 4%; }
+  .rung:nth-child(3) { background: #14a38b; margin-right: 16%; margin-left: 8%; }
+  .rung:nth-child(4) { background: var(--t-violet); margin-right: 8%; margin-left: 12%; }
+  .rung:nth-child(5) { background: #e0459b; margin-left: 16%; }
+
+  .feat { margin-top: 22px; display: grid; gap: 18px; }
+  .feat div { display: grid; grid-template-columns: 40px 1fr; gap: 12px; }
+  .feat .e { font-size: 30px; line-height: 1.1; }
+  .feat b { display: block; font-size: 19px; }
+
+  .care { background: #fff8e1; border-radius: var(--r-panel); padding: 22px 20px; margin-top: 22px; }
+
+  /* Senarai nilai: macam resit */
+  .receipt { background: #fff; border-radius: 18px; padding: 22px 20px; margin-top: 22px; box-shadow: 0 10px 0 var(--sky-deep); }
+  .receipt .ln { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 2px dotted var(--line); }
+  .receipt .ln span:last-child { white-space: nowrap; color: var(--ink-soft); }
+  .receipt .tot { display: flex; justify-content: space-between; padding-top: 14px; font-weight: 700; }
+  .receipt .tot span:last-child { text-decoration: line-through; color: var(--ink-soft); }
+  .pay-now { margin-top: 18px; border-radius: 16px; background: var(--t-green); color: #fff; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .pay-now b { font: 600 40px/1 Fredoka, sans-serif; }
+  .pay-now .was { font-size: 15px; opacity: .9; }
+  .compare { margin-top: 14px; font-size: 15px; color: var(--ink-soft); }
+
+  .buy { padding: 44px 0 56px; }
+  .buy .panel { margin-top: 18px; }
+  .buy .price-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .buy .price-line b { font: 600 46px/1 Fredoka, sans-serif; color: var(--t-green); }
+  .coupon-ok { color: var(--t-green); font-weight: 700; font-size: 16px; }
+  .fine { font-size: 14px; color: var(--ink-soft); margin-top: 12px; }
+  .guar { display: none; margin-top: 16px; background: #eafbf2; border-radius: 14px; padding: 12px 14px; font-size: 16px; }
+
+  .tst { margin-top: 20px; display: grid; gap: 12px; }
+  .tst blockquote { margin: 0; background: #fff; border-radius: 18px; padding: 16px 18px; }
+  .tst cite { display: block; font-style: normal; color: var(--ink-soft); font-size: 15px; margin-top: 6px; }
+
+  details.q { background: #fff; border-radius: 16px; padding: 14px 16px; margin-top: 10px; }
+  details.q summary { cursor: pointer; font-weight: 700; }
+  details.q p { margin-top: 8px; color: var(--ink-soft); }
+
+  .magnet { background: var(--ink); color: #fff; border-radius: var(--r-panel); padding: 26px 20px; }
+  .magnet .sec-lead { color: #d8d3f5; }
+  .magnet label.f { color: #fff; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; margin-top: 14px; }
+  .consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+  .ok-box { display: none; background: #eafbf2; color: var(--ink); border-radius: 16px; padding: 16px; margin-top: 14px; }
+
+  footer { padding: 30px 0 110px; font-size: 15px; color: var(--ink-soft); }
+  footer a { color: var(--ink-soft); }
+  .sticky { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; justify-content: space-between; z-index: 10; transform: translateY(110%); transition: transform .25s; }
+  .sticky.on { transform: none; }
+  .sticky .btn { padding: 12px 18px; font-size: 17px; }
+  .sticky b { font: 600 24px/1 Fredoka, sans-serif; }
+  @media (min-width: 760px) { .feat { grid-template-columns: 1fr 1fr; } .tst { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="promo" id="promo"></div>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/" aria-label="Jom Baca!"><span style="background:var(--t-red)">J</span><span style="background:var(--t-amber)">o</span><span style="background:var(--t-green)">m</span>&nbsp;<span style="background:var(--t-blue)">B</span><span style="background:var(--t-violet)">a</span><span style="background:#ff7a45">c</span><span style="background:var(--t-amber)">a</span></a>
+    <a class="btn" href="/app/" data-ev="demo_click">Cuba percuma</a>
+  </header>
+
+  <main>
+  <section class="hero" style="padding-top:8px">
+    <h1 data-v="headline">Anak dah kenal huruf tapi masih belum boleh membaca? Mulakan dengan suku kata, 10 minit sehari.</h1>
+    <p class="lead" data-v="sub">Jom Baca! ajar Bahasa Melayu suku kata demi suku kata. Anak sebut, aplikasi dengar dan beri bintang. Sesuai untuk 4 hingga 8 tahun, termasuk anak autisme dan disleksia.</p>
+
+    <div class="play" id="play" aria-live="polite">
+      <div class="play-q"><div class="pic" id="pPic">⚽</div><div><div class="small muted">Ketik suku kata ikut susunan</div><div class="slots" id="pSlots"></div></div></div>
+      <div class="tiles" id="pTiles"></div>
+      <div class="play-msg" id="pMsg">Cuba sendiri: ini cara anak belajar dalam Jom Baca!</div>
+    </div>
+
+    <div class="hero-cta">
+      <a class="btn" href="#beli" data-ev="cta_click" data-v="cta">Dapatkan Jom Baca Pro</a>
+      <a class="btn alt" href="/app/" data-ev="demo_click">Cuba 3 tahap percuma</a>
+    </div>
+    <p class="trust" id="trust">Bayar sekali, guna selamanya. Tiada langganan bulanan. Suara anak tidak dirakam.</p>
+  </section>
+  </main>
+</div>
+
+<section class="white">
+  <div class="wrap">
+    <h2>Macam mana anak belajar</h2>
+    <p class="sec-lead">Setiap perkataan ikut rentak yang sama, jadi anak tahu apa nak buat tanpa perlu dibimbing setiap saat.</p>
+    <ol class="steps">
+      <li><span class="n" style="background:var(--t-blue)">1</span><div><h3>Dengar</h3><p class="muted">Aplikasi sebut setiap suku kata sambil menyalakan huruf: <i>bo… la… bola</i>.</p></div></li>
+      <li><span class="n" style="background:var(--t-amber)">2</span><div><h3>Sebut</h3><p class="muted">Anak tekan 🎤 dan sebut. Aplikasi mendengar dan memberi maklum balas serta-merta.</p></div></li>
+      <li><span class="n" style="background:var(--t-green)">3</span><div><h3>Dapat bintang</h3><p class="muted">Tiga kali betul, gambar jadi 3D, telur menetas dan anak dapat haiwan baharu untuk koleksi.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Dari "a, i, u" sampai baca cerita sendiri</h2>
+    <p class="sec-lead">31 tahap tersusun, 290+ perkataan dan ayat. Anak naik tangga satu anak tangga pada satu masa.</p>
+    <div class="ladder">
+      <div class="rung"><span class="ic">🔤</span><div>Bunyi &amp; suku kata<small>Vokal, ba-bi-bu-be-bo hingga ya-yu-yo (tahap 1 hingga 12)</small></div></div>
+      <div class="rung"><span class="ic">🧩</span><div>Perkataan<small>Dua &amp; tiga suku kata, huruf mati, ng ny kh, ai au (tahap 13 hingga 21)</small></div></div>
+      <div class="rung"><span class="ic">🏃</span><div>Kata kerja &amp; imbuhan<small>makan, berlari, membaca, tersenyum (tahap 22 hingga 26)</small></div></div>
+      <div class="rung"><span class="ic">📖</span><div>Ayat &amp; cerita<small>Ayat pendek hingga cerita 3 ayat (tahap 27 hingga 31)</small></div></div>
+      <div class="rung"><span class="ic">✨</span><div>Pek cerita baharu<small>Ditambah setiap minggu, percuma untuk pemilik Pro</small></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="white">
+  <div class="wrap">
+    <h2>Untuk anak, dan untuk ibu bapa</h2>
+    <div class="feat">
+      <div><span class="e">🎯</span><p><b>Misi Hari Ini</b>Sesi 10 minit yang mencampurkan perkataan baharu dengan perkataan yang anak masih lemah.</p></div>
+      <div><span class="e">🔥</span><p><b>Streak harian</b>Anak nampak berapa hari berturut-turut dia membaca, jadi esok dia nak sambung lagi.</p></div>
+      <div><span class="e">👨‍👩‍👧</span><p><b>Ruang Ibu Bapa</b>Minit membaca, ketepatan, tahap selesai dan senarai perkataan yang perlu dilatih.</p></div>
+      <div><span class="e">🖨️</span><p><b>Pusat Cetak</b>Kad imbas, lembaran kerja, sijil dan pelan 30 hari untuk setiap tahap. Cetak sebanyak mana pun.</p></div>
+      <div><span class="e">👧👦</span><p><b>5 profil anak</b>Adik-beradik guna satu telefon, kemajuan masing-masing berasingan. Guna di 5 peranti.</p></div>
+      <div><span class="e">📶</span><p><b>Boleh guna offline</b>Pasang di skrin utama telefon atau tablet. Tak perlu muat turun dari app store.</p></div>
+    </div>
+    <div class="care">
+      <h3>Direka untuk anak berkeperluan khas juga</h3>
+      <p class="muted" style="margin-top:8px"><b>Mod Tenang</b> tanpa animasi dan bunyi kuat, jadual visual <i>Dulu → Kemudian</i> dengan ganjaran pilihan anak, dan <b>Mod Baca Dulu</b> dengan huruf besar untuk disleksia. Ibu bapa juga boleh tandakan jawapan betul sendiri bila anak belum bertutur dengan jelas.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Semua yang anda dapat</h2>
+    <p class="sec-lead">Anggaran nilai jika setiap bahagian dibeli atau diupah secara berasingan.</p>
+    <div class="receipt">
+      <div class="ln"><span>31 tahap kurikulum membaca bertingkat, 290+ item</span><span>RM300</span></div>
+      <div class="ln"><span>Latihan sebutan dengan pengecaman suara</span><span>RM150</span></div>
+      <div class="ln"><span>Mod Autisme &amp; Disleksia</span><span>RM150</span></div>
+      <div class="ln"><span>Pusat Cetak: kad imbas, lembaran kerja, sijil, tanpa had</span><span>RM120</span></div>
+      <div class="ln"><span>Pek cerita baharu setiap minggu, seumur hidup</span><span>RM120</span></div>
+      <div class="ln"><span>Misi Harian &amp; laporan kemajuan ibu bapa</span><span>RM100</span></div>
+      <div class="ln"><span>5 profil anak, 5 peranti, offline</span><span>RM60</span></div>
+      <div class="ln"><span>Bonus: jadi affiliate, dapat komisen setiap kawan yang beli</span><span>bonus</span></div>
+      <div class="tot"><span>Jumlah anggaran nilai</span><span>RM1,000</span></div>
+      <div class="pay-now"><div><div class="was">Harga anda hari ini</div><small>sekali bayar, akses seumur hidup</small></div><b data-price>RM20</b></div>
+    </div>
+    <p class="compare">Sebagai perbandingan, kelas membaca atau tuisyen biasanya RM80 hingga RM150 sebulan.</p>
+  </div>
+</section>
+
+<section class="white" id="tstSec" style="display:none">
+  <div class="wrap"><h2>Kata ibu bapa</h2><div class="tst" id="tst"></div></div>
+</section>
+
+<section class="buy" id="beli">
+  <div class="wrap">
+    <h2>Dapatkan Jom Baca Pro</h2>
+    <div class="panel">
+      <div class="price-line"><b data-price>RM20</b><span class="muted" id="basePrice"></span></div>
+      <div class="coupon-ok" id="couponOk"></div>
+      <form id="buyForm" novalidate>
+        <label class="f" for="bName">Nama anda</label><input class="in" id="bName" name="name" autocomplete="name" required>
+        <label class="f" for="bEmail">Emel (kod lesen dihantar ke sini)</label><input class="in" id="bEmail" name="email" type="email" autocomplete="email" inputmode="email" required>
+        <label class="f" for="bPhone">No. telefon</label><input class="in" id="bPhone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="012-345 6789" required>
+        <details style="margin-top:12px"><summary class="small" style="cursor:pointer">Ada kod kupon?</summary><input class="in" id="bCoupon" name="coupon" style="margin-top:8px;text-transform:uppercase" autocomplete="off"></details>
+        <div class="hp" aria-hidden="true"><input name="hp" tabindex="-1" autocomplete="off"></div>
+        <div class="err" id="bErr" role="alert"></div>
+        <button class="btn" style="width:100%;margin-top:6px" id="bBtn" type="submit">Bayar <span data-price>RM20</span> dan dapatkan lesen</button>
+        <p class="fine">Bayar dengan FPX (perbankan dalam talian) atau kad melalui ToyyibPay. Lesen dihantar ke emel sebaik sahaja pembayaran berjaya, dan aplikasi terus boleh digunakan.</p>
+        <div class="guar" id="guar"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="white">
+  <div class="wrap">
+    <h2>Soalan lazim</h2>
+    <details class="q"><summary>Anak saya umur berapa sesuai?</summary><p>Paling sesuai 4 hingga 8 tahun, atau mana-mana anak yang baru mula belajar membaca Bahasa Melayu. Anak yang lebih tua tetapi masih lemah membaca juga boleh mula dari tahap yang sesuai.</p></details>
+    <details class="q"><summary>Perlu muat turun dari Play Store atau App Store?</summary><p>Tidak. Jom Baca! dibuka dalam pelayar (Chrome atau Safari) dan boleh ditambah ke skrin utama macam aplikasi biasa. Lepas dibuka sekali, ia boleh digunakan tanpa internet.</p></details>
+    <details class="q"><summary>Pengecaman suara berfungsi di semua telefon?</summary><p>Ia berfungsi paling baik di Chrome (Android, komputer). Jika mikrofon tidak disokong, ibu bapa boleh tekan butang "tandakan betul" dan semua ciri lain tetap berfungsi, termasuk kuiz dengar dan pilih.</p></details>
+    <details class="q"><summary>Suara anak saya disimpan?</summary><p>Tidak. Suara diproses oleh pelayar untuk semakan sebutan dan tidak dirakam atau disimpan oleh kami. Kemajuan anak disimpan dalam peranti anda.</p></details>
+    <details class="q"><summary>Bayar sekali sahaja?</summary><p>Ya. Sekali bayar, akses seumur hidup, termasuk pek cerita baharu yang ditambah setiap minggu. Tiada caj bulanan.</p></details>
+    <details class="q"><summary>Boleh guna untuk lebih seorang anak?</summary><p>Boleh. Satu lesen untuk sehingga 5 profil anak dan 5 peranti.</p></details>
+    <details class="q"><summary>Saya cikgu tadika. Boleh guna di kelas?</summary><p>Boleh guna profil untuk beberapa murid dan cetak lembaran kerja untuk kelas. Untuk lesen kelas yang lebih besar, hubungi kami.</p></details>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="magnet" id="magnet">
+      <h2>Belum sedia? Ambil Jadual Suku Kata percuma</h2>
+      <p class="sec-lead">Jadual ba-bi-bu-be-bo hingga za-zi-zu-ze-zo yang boleh dicetak dan ditampal di dinding, dengan cara guna 5 minit sehari.</p>
+      <form id="leadForm" novalidate>
+        <label class="f" for="lName">Nama</label><input class="in" id="lName" autocomplete="name">
+        <label class="f" for="lPhone">No. WhatsApp</label><input class="in" id="lPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="012-345 6789">
+        <label class="f" for="lEmail">Emel</label><input class="in" id="lEmail" type="email" inputmode="email" autocomplete="email">
+        <label class="f" for="lAge">Umur anak</label>
+        <select class="in" id="lAge"><option value="">Pilih</option><option>3 tahun</option><option>4 tahun</option><option>5 tahun</option><option>6 tahun</option><option>7 tahun</option><option>8 tahun ke atas</option></select>
+        <label class="consent"><input type="checkbox" id="lOk"><span>Saya setuju menerima jadual ini serta tips membaca dan tawaran Jom Baca! melalui emel atau WhatsApp. Boleh berhenti bila-bila masa.</span></label>
+        <div class="hp" aria-hidden="true"><input id="lHp" tabindex="-1" autocomplete="off"></div>
+        <div class="err" id="lErr" role="alert" style="color:#ffb3c0"></div>
+        <button class="btn" type="submit" id="lBtn" style="width:100%;margin-top:6px">Hantar jadual kepada saya</button>
+      </form>
+      <div class="ok-box" id="lOkBox">✅ Siap! <a href="/kad-percuma">Buka Jadual Suku Kata sekarang</a>. Salinan juga dihantar ke emel anda.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><b>Jom Baca!</b> Belajar membaca Bahasa Melayu suku kata demi suku kata.</p>
+    <p style="margin-top:8px"><a href="/affiliate">Program affiliate: dapat komisen setiap jualan</a></p>
+    <p style="margin-top:8px"><a href="/privasi">Privasi &amp; terma</a> <span id="waLink"></span></p>
+  </div>
+</footer>
+
+<div class="sticky" id="sticky"><div><div class="small muted">Jom Baca Pro</div><b data-price>RM20</b></div><a class="btn" href="#beli" data-ev="cta_click">Dapatkan sekarang</a></div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const q = new URLSearchParams(location.search);
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+  /* Atribusi: ref affiliate (30 hari, sentuhan terakhir) & sumber (sentuhan pertama dalam 7 hari) */
+  const T = Date.now();
+  if (q.get("ref")) ls.set("jb_ref", JSON.stringify({ c: q.get("ref").toLowerCase().slice(0, 30), t: T }));
+  const refO = JSON.parse(ls.get("jb_ref") || "null"); const ref = refO && T - refO.t < 30 * 864e5 ? refO.c : "";
+  const srcO = JSON.parse(ls.get("jb_src") || "null");
+  let src = srcO && T - srcO.t < 7 * 864e5 ? srcO.s : "";
+  if (!src && (q.get("src") || q.get("utm_source"))) { src = (q.get("src") || q.get("utm_source")).slice(0, 40); ls.set("jb_src", JSON.stringify({ s: src, t: T })); }
+  if (!src && document.referrer && !document.referrer.startsWith(location.origin)) { try { src = "ref_" + new URL(document.referrer).hostname.replace(/^www\./, "").split(".")[0]; ls.set("jb_src", JSON.stringify({ s: src, t: T })); } catch (e) {} }
+  let vids = JSON.parse(ls.get("jb_vids") || "[]");
+  let coupon = (q.get("kupon") || q.get("coupon") || "").toUpperCase();
+  const track = e => { try { navigator.sendBeacon("/api/t", new Blob([JSON.stringify({ e, src })], { type: "text/plain" })); } catch (x) {} };
+  document.querySelectorAll("[data-ev]").forEach(a => a.addEventListener("click", () => track(a.dataset.ev)));
+
+  /* Varian laman (A/B auto) + harga + promo */
+  fetch("/api/lp?" + new URLSearchParams({ src, kupon: coupon })).then(r => r.json()).then(d => {
+    if (d.v) {
+      vids = [];
+      for (const [slot, v] of Object.entries(d.v)) { vids.push(v.id); document.querySelectorAll(`[data-v="${slot}"]`).forEach(el => el.textContent = v.text); }
+      ls.set("jb_vids", JSON.stringify(vids));
+    }
+    document.querySelectorAll("[data-price]").forEach(el => el.textContent = d.price_label);
+    if (d.coupon) {
+      coupon = d.coupon.code; $("bCoupon").value = coupon;
+      $("basePrice").innerHTML = "<s>" + d.base_label + "</s>";
+      $("couponOk").textContent = "Kupon " + d.coupon.code + " digunakan: jimat " + d.coupon.save_label + (d.coupon.expires ? ", sah sehingga " + new Date(d.coupon.expires).toLocaleString("ms-MY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+    }
+    if (d.promo) { $("promo").innerHTML = "🎉 <b>" + d.promo.label.replace(/[<>]/g, "") + "</b> sehingga " + new Date(d.promo.until).toLocaleString("ms-MY", { weekday: "long", hour: "2-digit", minute: "2-digit" }); $("promo").style.display = "block"; }
+    if (d.guarantee_days > 0) { $("guar").textContent = "🛡️ Jaminan " + d.guarantee_days + " hari: jika Jom Baca! tidak sesuai untuk anak anda, hubungi kami dalam " + d.guarantee_days + " hari untuk bayaran balik penuh."; $("guar").style.display = "block"; }
+    if (d.buyers) $("trust").textContent = d.buyers + " keluarga sudah guna Jom Baca Pro. Bayar sekali, guna selamanya. Suara anak tidak dirakam.";
+    if (d.testimonials && d.testimonials.length) {
+      $("tst").innerHTML = d.testimonials.map(t => `<blockquote>${t.text.replace(/[<>]/g, "")}<cite>${(t.name || "").replace(/[<>]/g, "")}</cite></blockquote>`).join("");
+      $("tstSec").style.display = "";
+    }
+    if (d.wa) $("waLink").innerHTML = ` · <a href="https://wa.me/${d.wa}" data-ev="wa_click">WhatsApp kami</a>`;
+  }).catch(() => {});
+
+  /* Demo suku kata */
+  const WORDS = [["bo", "la", "⚽"], ["ku", "da", "🐴"], ["ro", "ti", "🍞"], ["bu", "ku", "📕"], ["to", "pi", "🎩"], ["ba", "ju", "👕"], ["ka", "ki", "🦶"]];
+  const EXTRA = ["ma", "si", "pa", "le", "nu", "ra", "de"];
+  const COLORS = ["r", "a", "g", "b", "v"];
+  let wi = 0, got = [];
+  function say(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); const v = speechSynthesis.getVoices().find(v => /^(id|ms)/i.test(v.lang)); if (v) u.voice = v; u.lang = v ? v.lang : "id-ID"; u.rate = .85; speechSynthesis.speak(u); } catch (e) {} }
+  function round() {
+    const w = WORDS[wi % WORDS.length]; got = [];
+    $("pPic").textContent = w[2]; $("play").classList.remove("win");
+    $("pSlots").innerHTML = '<div class="slot"></div><div class="slot"></div>';
+    const opts = [w[0], w[1], ...EXTRA.filter(x => x !== w[0] && x !== w[1]).sort(() => Math.random() - .5).slice(0, 2)].sort(() => Math.random() - .5);
+    $("pTiles").innerHTML = "";
+    opts.forEach((s, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "tile " + COLORS[(i + wi) % 5]; b.textContent = s; b.onclick = () => tap(b, s, w); $("pTiles").appendChild(b); });
+  }
+  function tap(b, s, w) {
+    const need = w[got.length];
+    say(s);
+    if (s !== need) { $("pMsg").textContent = "Hmm, cuba lagi. Dengar: " + w[0] + "… " + w[1]; return; }
+    got.push(s); b.classList.add("used");
+    const sl = $("pSlots").children[got.length - 1]; sl.textContent = s; sl.classList.add("full");
+    if (got.length === 2) {
+      const word = w[0] + w[1]; $("play").classList.add("win");
+      setTimeout(() => say(word), 500);
+      $("pMsg").textContent = "⭐ " + w[0] + " + " + w[1] + " = " + word + "! Dalam app, anak sebut sendiri dan aplikasi mendengar.";
+      if (wi === 0) track("demo_play");
+      wi++; setTimeout(round, 2600);
+    } else $("pMsg").textContent = "Bagus! Sekarang suku kata kedua.";
+  }
+  round();
+
+  /* Bar melekit selepas hero */
+  const st = $("sticky"); const hero = document.querySelector(".hero"); const buy = $("beli");
+  let s50 = false;
+  addEventListener("scroll", () => {
+    const y = scrollY, hb = hero.getBoundingClientRect().bottom, bt = buy.getBoundingClientRect();
+    st.classList.toggle("on", hb < 0 && !(bt.top < innerHeight && bt.bottom > 0));
+    if (!s50 && y > document.body.scrollHeight * .5) { s50 = true; track("scroll50"); }
+  }, { passive: true });
+
+  /* Checkout */
+  let fo = false;
+  $("buyForm").addEventListener("focusin", () => { if (!fo) { fo = true; track("form_open"); } });
+  $("buyForm").onsubmit = async e => {
+    e.preventDefault(); $("bErr").textContent = "";
+    const f = e.target, d = { name: f.name.value.trim(), email: f.email.value.trim(), phone: f.phone.value.trim(), coupon: $("bCoupon").value.trim() || coupon, hp: f.hp.value, ref, src, vids };
+    if (!d.name) return $("bErr").textContent = "Sila isi nama anda.";
+    if (!/^\S+@\S+\.\S+$/.test(d.email)) return $("bErr").textContent = "Sila isi emel yang sah. Kod lesen akan dihantar ke emel ini.";
+    if (d.phone.replace(/\D/g, "").length < 9) return $("bErr").textContent = "Sila isi no. telefon yang sah.";
+    $("bBtn").disabled = true; $("bBtn").textContent = "Membuka halaman pembayaran…";
+    try {
+      const r = await fetch("/api/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "Ralat. Cuba lagi.");
+      location.href = j.url;
+    } catch (err) { $("bErr").textContent = err.message; $("bBtn").disabled = false; $("bBtn").innerHTML = 'Bayar <span data-price>' + (document.querySelector("[data-price]").textContent) + '</span> dan dapatkan lesen'; }
+  };
+
+  /* Lead magnet */
+  $("leadForm").onsubmit = async e => {
+    e.preventDefault(); $("lErr").textContent = "";
+    const d = { name: $("lName").value.trim(), phone: $("lPhone").value.trim(), email: $("lEmail").value.trim(), child_age: $("lAge").value, hp: $("lHp").value, src, ref, vids };
+    if (!d.email && d.phone.replace(/\D/g, "").length < 9) return $("lErr").textContent = "Sila isi no. WhatsApp atau emel.";
+    if (!$("lOk").checked) return $("lErr").textContent = "Sila tandakan persetujuan untuk menerima jadual.";
+    $("lBtn").disabled = true;
+    try {
+      const r = await fetch("/api/lead", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || "Ralat");
+      $("leadForm").style.display = "none"; $("lOkBox").style.display = "block";
+    } catch (err) { $("lErr").textContent = err.message; $("lBtn").disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>

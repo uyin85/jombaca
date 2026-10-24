@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terima kasih: Jom Baca! Pro</title><meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style>
+  main { padding: 40px 0 60px; }
+  .key { font: 600 26px/1.2 Fredoka, sans-serif; letter-spacing: 2px; background: var(--sky); border-radius: 14px; padding: 14px; text-align: center; margin: 14px 0; word-break: break-all; }
+  .panel { margin-top: 18px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .wait { font-size: 48px; text-align: center; animation: spin 2s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div id="box" class="panel"><div style="text-align:center"><span class="wait">⏳</span><p>Menyemak pembayaran anda…</p></div></div>
+</main>
+<script>
+(async function () {
+  const q = new URLSearchParams(location.search), o = q.get("o"), t = q.get("t"), box = document.getElementById("box");
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  if (!o || !t) { box.innerHTML = "<h2>Pautan tidak lengkap</h2><p class='muted'>Semak emel anda untuk kod lesen, atau hubungi kami.</p>"; return; }
+  let tries = 0;
+  async function check() {
+    tries++;
+    let d; try { d = await (await fetch(`/api/order?o=${encodeURIComponent(o)}&t=${encodeURIComponent(t)}`)).json(); } catch (e) { d = { status: "error" }; }
+    if (d.status === "paid") {
+      const site = location.origin, link = d.aff ? `${site}/r/${d.aff}` : "";
+      box.innerHTML = `<h1>Terima kasih, ${esc((d.name || "").split(" ")[0])}! 🎉</h1>
+        <p class="muted" style="margin-top:10px">Pembelian Jom Baca Pro berjaya. Ini kod lesen anda (juga dihantar ke emel):</p>
+        <div class="key" id="k">${esc(d.license)}</div>
+        <a class="btn" style="width:100%" href="${esc(d.app_url)}">Buka Jom Baca Pro sekarang</a>
+        <p class="small muted" style="margin-top:14px">Pada telefon: selepas app dibuka, tekan menu pelayar dan pilih <b>Tambah ke Skrin Utama</b> supaya mudah dibuka anak. Di peranti lain, buka ${esc(site)}/app/ → 👑 → "Sudah beli?" dan masukkan kod di atas (sehingga 5 peranti).</p>
+        ${link ? `<div class="panel" style="background:var(--sky);margin-top:22px"><h3>💸 Bonus: anda kini affiliate</h3><p class="muted" style="margin-top:6px">Kongsi pautan ini. Setiap kawan yang beli, anda dapat komisen.</p><div class="key" style="font-size:16px;letter-spacing:0;background:#fff">${esc(link)}</div>
+        <div class="row"><a class="btn" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent("Anak saya belajar membaca guna Jom Baca! 10 minit sehari, suku kata demi suku kata. Cuba percuma: " + link)}">Kongsi di WhatsApp</a><a class="btn alt" href="/affiliate?code=${encodeURIComponent(d.aff)}&k=${encodeURIComponent(d.aff_k || "")}">Papan affiliate</a></div></div>` : ""}`;
+      return;
+    }
+    if (d.status === "pending" && d.manual_text) {
+      box.innerHTML = `<h2>Pesanan diterima ✅</h2><p class="muted" style="margin-top:10px">${esc(d.manual_text)}</p><p style="margin-top:10px">Jumlah: <b>${esc(d.amount)}</b> · No. pesanan: <b>${esc(o)}</b></p>${d.wa ? `<div class="row"><a class="btn" href="https://wa.me/${esc(d.wa)}?text=${encodeURIComponent("Saya nak lengkapkan pesanan Jom Baca Pro " + o)}">WhatsApp kami</a></div>` : ""}`;
+      setTimeout(check, 15000); return;
+    }
+    if (d.status === "pending" && tries < 8) { setTimeout(check, 4000); return; }
+    if (d.status === "pending") {
+      box.innerHTML = `<h2>Pembayaran belum disahkan</h2><p class="muted" style="margin-top:10px">Jika anda sudah bayar, tunggu beberapa minit dan muat semula halaman ini. Kod lesen juga akan dihantar ke emel.</p><div class="row"><button class="btn alt" onclick="location.reload()">Muat semula</button>${d.pay_url ? `<a class="btn" href="${esc(d.pay_url)}">Sambung pembayaran</a>` : ""}${d.wa ? `<a class="btn alt" href="https://wa.me/${esc(d.wa)}?text=${encodeURIComponent("Pesanan Jom Baca " + o)}">WhatsApp kami</a>` : ""}</div>`;
+      return;
+    }
+    box.innerHTML = `<h2>Pesanan tidak dijumpai</h2><p class="muted">Semak emel anda atau hubungi kami.</p>`;
+  }
+  check();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privasi &amp; Terma: Jom Baca!</title>
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style> main { padding: 26px 0 60px; } h2 { margin-top: 26px; font-size: 22px; } p, li { margin-top: 8px; } </style>
+</head>
+<body>
+<main class="wrap">
+  <a href="/" class="small">← Jom Baca!</a>
+  <h1 style="margin-top:10px">Privasi &amp; Terma</h1>
+  <p class="muted">Dikemas kini: 25 Oktober 2026. Sila semak dan sesuaikan halaman ini mengikut perniagaan anda sebelum menerima bayaran.</p>
+  <h2>Data yang kami kumpul</h2>
+  <ul>
+    <li><b>Pembelian:</b> nama, emel dan no. telefon untuk menghantar lesen dan memberi sokongan. Pembayaran diproses oleh ToyyibPay; kami tidak menyimpan butiran kad atau bank anda.</li>
+    <li><b>Lead:</b> jika anda meminta Jadual Suku Kata percuma, kami simpan nama, emel/no. WhatsApp dan umur anak untuk menghantar jadual, tips dan tawaran. Anda boleh berhenti melanggan bila-bila masa melalui pautan dalam emel atau dengan memaklumkan kami.</li>
+    <li><b>Aplikasi:</b> suara anak diproses oleh pelayar untuk semakan sebutan dan <b>tidak dirakam atau disimpan</b> oleh kami. Kemajuan anak disimpan dalam peranti anda. Statistik penggunaan tanpa nama (contoh: tahap yang paling kerap diulang) dihantar untuk menambah baik aplikasi.</li>
+    <li><b>Affiliate:</b> nama, emel, telefon, akaun media sosial dan butiran bayaran komisen.</li>
+  </ul>
+  <h2>Penggunaan data</h2>
+  <p>Data digunakan hanya untuk menghantar produk, sokongan pelanggan, pembayaran komisen dan komunikasi pemasaran yang anda persetujui. Kami tidak menjual data anda kepada pihak ketiga. Data disimpan di infrastruktur Cloudflare.</p>
+  <h2>Lesen</h2>
+  <p>Satu lesen Jom Baca Pro untuk kegunaan keluarga: sehingga 5 profil anak dan 5 peranti. Lesen tidak boleh dijual semula atau dikongsi secara awam.</p>
+  <h2>Bayaran balik</h2>
+  <p id="refund">Hubungi kami jika anda menghadapi masalah teknikal. Kami akan cuba selesaikan atau mempertimbangkan bayaran balik.</p>
+  <h2>Hubungi kami</h2>
+  <p id="contact">Melalui emel atau WhatsApp yang tertera di laman utama.</p>
+</main>
+<script>
+fetch("/api/lp?lite=1").then(r => r.json()).then(d => {
+  if (d.guarantee_days > 0) document.getElementById("refund").textContent = "Jaminan " + d.guarantee_days + " hari: jika Jom Baca! tidak sesuai untuk anak anda, hubungi kami dalam tempoh " + d.guarantee_days + " hari dari tarikh pembelian untuk bayaran balik penuh. Lesen akan dibatalkan selepas bayaran balik.";
+  if (d.wa) document.getElementById("contact").innerHTML = 'WhatsApp: <a href="https://wa.me/' + d.wa + '">+' + d.wa + "</a>";
+}).catch(() => {});
+</script>
+</body>
+</html>

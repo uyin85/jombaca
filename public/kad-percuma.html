@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jadual Suku Kata Percuma: Jom Baca!</title>
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style>
+  main { padding: 26px 0 50px; }
+  .chart { background: #fff; border-radius: 18px; padding: 12px; margin-top: 18px; overflow-x: auto; }
+  table { border-collapse: separate; border-spacing: 4px; margin: 0 auto; }
+  td { font: 600 26px/1 Fredoka, sans-serif; text-align: center; padding: 8px 6px; border-radius: 10px; min-width: 52px; cursor: pointer; }
+  td.h { color: #fff; }
+  td:not(.h) { background: var(--sky); }
+  .how { margin-top: 20px; }
+  .how li { margin: 6px 0; }
+  .noprint { display: block; }
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    body { background: #fff; }
+    .noprint { display: none !important; }
+    .chart { padding: 0; }
+    td { font-size: 22px; padding: 6px 4px; border: 1.5px solid #cfd9ea; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap" style="max-width:900px">
+  <div class="noprint"><a href="/" class="small">← Jom Baca!</a></div>
+  <h1 style="margin-top:10px">Jadual Suku Kata Bahasa Melayu</h1>
+  <p class="muted" style="margin-top:8px">Ketik mana-mana suku kata untuk dengar sebutannya. Cetak dan tampal di dinding bilik anak.</p>
+  <div class="noprint" style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" onclick="print()">🖨️ Cetak jadual</button><a class="btn alt" href="/app/">Cuba app Jom Baca percuma</a></div>
+  <div class="chart"><table id="t"></table></div>
+  <div class="how panel" style="margin-top:20px">
+    <h3>Cara guna 5 minit sehari</h3>
+    <ol>
+      <li>Pilih <b>satu baris</b> sehari (contoh: ba, bi, bu, be, bo).</li>
+      <li>Sebut bersama anak sambil tunjuk dengan jari, kiri ke kanan.</li>
+      <li>Minta anak "cari ba" dalam jadual. Tukar giliran: anak pula beri arahan kepada anda.</li>
+      <li>Gabungkan dua suku kata: <b>ba + ju = baju</b>, <b>bo + la = bola</b>. Tanya: "itu apa?"</li>
+      <li>Puji usaha, bukan hanya jawapan betul. Berhenti sebelum anak bosan.</li>
+    </ol>
+    <p class="muted" style="margin-top:10px">Nak anak berlatih sendiri dengan aplikasi yang mendengar sebutannya? <a href="/app/">Cuba Jom Baca! percuma</a>, atau <a href="/#beli">dapatkan Jom Baca Pro</a> untuk semua 31 tahap.</p>
+  </div>
+</main>
+<script>
+  const C = "b c d f g h j k l m n p r s t w y z".split(" "), V = ["a", "i", "u", "e", "o"], COL = ["#ef3f5c", "#2f7df6", "#17b26a", "#f5a000", "#8a4dff"];
+  let h = "<tr><td class='h' style='background:#2b2350'></td>" + V.map((v, i) => `<td class="h" style="background:${COL[i]}">${v}</td>`).join("") + "</tr>";
+  C.forEach(c => { h += `<tr><td class="h" style="background:#2b2350">${c}</td>` + V.map(v => `<td>${c}${v}</td>`).join("") + "</tr>"; });
+  h += `<tr><td class="h" style="background:#2b2350">ng</td>` + V.map(v => `<td>ng${v}</td>`).join("") + "</tr>";
+  h += `<tr><td class="h" style="background:#2b2350">ny</td>` + V.map(v => `<td>ny${v}</td>`).join("") + "</tr>";
+  document.getElementById("t").innerHTML = h;
+  document.getElementById("t").onclick = e => {
+    const td = e.target.closest("td"); if (!td) return;
+    try { speechSynthesis.cancel(); const t = td.textContent.length === 1 ? { a: "aa", i: "ii", u: "uu", e: "eh", o: "oo" }[td.textContent] || td.textContent : td.textContent; const u = new SpeechSynthesisUtterance(t); const v = speechSynthesis.getVoices().find(v => /^(id|ms)/i.test(v.lang)); if (v) u.voice = v; u.lang = v ? v.lang : "id-ID"; u.rate = .8; speechSynthesis.speak(u); } catch (x) {}
+  };
+</script>
+</body>
+</html>
