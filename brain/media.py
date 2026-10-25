@@ -1,13 +1,12 @@
 """Penjana media Jom Baca: kad gambar (1080x1350) dan video hook (1080x1920, 9:16).
 
 Cara: templat HTML berjenama (kotak suku kata berwarna seperti dalam app) dirakam oleh Chromium
-(Playwright). Video dirakam frame demi frame dan dicantum dengan ffmpeg, beserta suara latar
-Bahasa Melayu (edge-tts, ms-MY) jika tersedia. Tiada AI imej, jadi ejaan sentiasa tepat. Kos RM0.
+(Playwright). Video dirakam frame demi frame dan dicantum dengan ffmpeg, beserta muzik latar
+kanak-kanak dan kesan bunyi yang disintesis sendiri (brain/sound.py). Tiada AI imej, jadi ejaan sentiasa tepat. Kos RM0.
 
 Jika Playwright/ffmpeg tiada (cth. persekitaran ujian), available() pulang False dan agen
 terus post teks sahaja.
 """
-import asyncio
 import html
 import json
 import os
@@ -19,8 +18,7 @@ import tempfile
 W_IMG, H_IMG = 1080, 1350
 W_VID, H_VID = 1080, 1920
 FPS = 30
-LAST = {"tts": ""}  # status suara larian terakhir (untuk laporan)
-VOICE = os.environ.get("JB_TTS_VOICE", "ms-MY-YasminNeural")
+LAST = {"audio": ""}  # status bunyi larian terakhir (untuk laporan)
 FONT_DIRS = [os.environ.get("JB_FONTS", ""), os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")]
 
 THEMES = [  # (latar atas, latar bawah, warna sorotan)
@@ -168,60 +166,12 @@ window.seek=seek; seek(0);
 </script></body></html>"""
 
 
-async def _tts(text, out):
-    import edge_tts  # noqa: WPS433
-    await edge_tts.Communicate(text, VOICE, rate="-5%").save(out)
-
-
-def _say(text, out):
-    """Suara ms-MY: cuba edge-tts dahulu, jika gagal guna Google (gTTS, bahasa 'ms'). Pulang nama enjin."""
-    err = None
-    try:
-        asyncio.run(_tts(text, out))
-        if os.path.getsize(out) > 1000:
-            return "edge"
-    except Exception as e:  # noqa: BLE001
-        err = e
-    try:
-        from gtts import gTTS
-        gTTS(text, lang="ms").save(out)
-        if os.path.getsize(out) > 1000:
-            return "gtts"
-    except Exception as e2:  # noqa: BLE001
-        raise RuntimeError(f"edge: {err!r} | gtts: {e2!r}") from e2
-    raise RuntimeError(f"edge: {err!r} | gtts: fail kosong")
-
-
-def _dur(path):
-    try:
-        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", path], capture_output=True, text=True, timeout=30)
-        return float(r.stdout.strip())
-    except Exception:  # noqa: BLE001
-        return 0.0
-
-
-def _voice(spec, tmp):
-    """Pulang [(fail, mula_saat)] dan tl. Gagal → tiada suara, masa lalai."""
-    tiles = spec["tiles"] or ["ba", "ca"]
-    parts = [spec["headline"], ". ".join(tiles) + ". " + "".join(tiles) + "!", "Cuba enam tahap percuma. Pautan di bio."]
-    files, engines = [], []
-    try:
-        for i, t in enumerate(parts):
-            f = os.path.join(tmp, f"v{i}.mp3")
-            engines.append(_say(t, f))
-            files.append((f, _dur(f)))
-    except Exception as e:  # noqa: BLE001
-        print("tts gagal, video tanpa suara:", repr(e))
-        LAST["tts"] = f"GAGAL: {type(e).__name__}: {str(e)[:300]}"
-        files = []
-    else:
-        LAST["tts"] = f"ok {'/'.join(sorted(set(engines)))} ({len(files)} klip, {sum(d for _, d in files):.1f}s)"
-    d = [x[1] for x in files] if files else [0, 0, 0]
-    hook_end = max(3.0, d[0] + 0.6)
-    demo_end = hook_end + max(3.2, d[1] + 0.8)
-    total = demo_end + max(2.6, d[2] + 0.6)
-    starts = [0.3, hook_end + 0.2, demo_end + 0.2]
-    return [(f, s) for (f, _), s in zip(files, starts)], {"hook_end": round(hook_end, 2), "demo_end": round(demo_end, 2), "total": round(total, 2)}
+def timeline(spec):
+    """Masa animasi (saat). Sama dengan pengiraan dalam video_html."""
+    hook_end = round(min(4.5, max(3.0, 2.6 + len(spec["headline"]) / 40)), 2)
+    demo_end = round(hook_end + 3.2, 2)
+    return {"hook_end": hook_end, "demo_end": demo_end, "total": round(demo_end + 2.6, 2),
+            "tiles": len(spec["tiles"] or ["ba", "ca"]), "word_at": round(hook_end + 3.2 * 0.45, 2)}
 
 
 def render_image(spec, site_host, out):
@@ -243,7 +193,7 @@ def render_image(spec, site_host, out):
 def render_video(spec, site_host, out):
     from playwright.sync_api import sync_playwright
     with tempfile.TemporaryDirectory() as tmp:
-        voices, tl = _voice(spec, tmp)
+        tl = timeline(spec)
         page_file = os.path.join(tmp, "vid.html")
         open(page_file, "w", encoding="utf-8").write(video_html(spec, site_host, tl))
         silent = os.path.join(tmp, "silent.mp4")
@@ -260,15 +210,17 @@ def render_video(spec, site_host, out):
             b.close()
         ff.stdin.close()
         ff.wait(timeout=300)
-        if voices:
-            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", silent]
-            for f, _ in voices:
-                cmd += ["-i", f]
-            delays = "".join(f"[{i + 1}:a]adelay={int(s * 1000)}|{int(s * 1000)}[a{i}];" for i, (_, s) in enumerate(voices))
-            mix = "".join(f"[a{i}]" for i in range(len(voices)))
-            cmd += ["-filter_complex", f"{delays}{mix}amix=inputs={len(voices)}:normalize=0,apad[aout]", "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart", out]
-        else:  # trek audio senyap supaya diterima IG/Threads
-            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", silent, "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-c:v", "copy", "-c:a", "aac", "-shortest", "-movflags", "+faststart", out]
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", silent]
+        try:
+            from . import sound
+            wav = sound.render(tl, os.path.join(tmp, "bunyi.wav"), seed=spec["headline"])
+            cmd += ["-i", wav, "-map", "0:v", "-map", "1:a"]
+            LAST["audio"] = "muzik+sfx"
+        except Exception as e:  # noqa: BLE001
+            print("bunyi gagal, guna trek senyap:", repr(e))
+            LAST["audio"] = f"GAGAL: {e!r}"[:300]
+            cmd += ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono"]
+        cmd += ["-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart", out]
         subprocess.run(cmd, check=True, timeout=300)
     return out
 

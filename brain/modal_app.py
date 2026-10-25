@@ -7,11 +7,11 @@ Secret Modal bernama "jombaca" mesti mengandungi: HQ_URL, BRAIN_KEY, GEMINI_API_
 import modal
 
 app = modal.App("jombaca-brain")
-# Imej termasuk Chromium (Playwright) + ffmpeg + suara edge-tts untuk melukis kad gambar & video hook.
+# Imej termasuk Chromium (Playwright) + ffmpeg untuk melukis kad gambar & video hook (muzik disintesis sendiri).
 image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("ffmpeg", "fonts-noto-color-emoji", "fonts-dejavu-core")
-    .pip_install("playwright==1.47.0", "edge-tts==7.2.0", "gTTS==2.5.4")
+    .pip_install("playwright==1.47.0")
     .run_commands("playwright install --with-deps chromium")
     .env({"JB_FONTS": "/opt/jbfonts"})
     .add_local_dir("brain/fonts", remote_path="/opt/jbfonts")
