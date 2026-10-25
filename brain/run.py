@@ -5,6 +5,7 @@
   python -m brain.run all                  jalankan semua agen sekali (ujian)
   BRAIN_DRY=1 ...                          cetak tindakan tanpa menulis ke HQ
 """
+import os
 import sys
 import traceback
 
@@ -32,6 +33,10 @@ def run_agent(hq, name):
 def tick(hq=None):
     hq = hq or HQ()
     n = now_myt()
+    try:  # isyarat "saya hidup" untuk Pengawas, walaupun tiada agen dijadualkan jam ini
+        hq.write("heartbeat", "brain", via="github" if os.environ.get("GITHUB_ACTIONS") else "modal")
+    except Exception as e:  # noqa: BLE001
+        print("heartbeat gagal:", e)
     ran = []
     for name, (hours, days) in SCHEDULE.items():
         if days is not None and n.weekday() not in days:

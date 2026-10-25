@@ -875,6 +875,10 @@ async function brainWrite(env, kind, d, agent) {
   const A = clip(agent || d.agent || "brain", 30);
   const rows = Array.isArray(d.rows) ? d.rows.slice(0, 40) : [];
   switch (kind) {
+    case "heartbeat":
+      await setSetting(env, "brain_seen", now());
+      await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-");
+      return { ok: true };
     case "run": {
       await env.DB.prepare("INSERT INTO agent_runs(ts,agent,status,summary,error,llm) VALUES(?,?,?,?,?,?)").bind(now(), A, clip(d.status, 20), clip(d.summary, 4e3), clip(d.error, 2e3), clip(d.llm, 60)).run();
       return { ok: true };
@@ -1623,8 +1627,9 @@ async function health(env, s) {
   const h = mytHour(), out = [];
   const add = (name, ok, detail, fix) => out.push({ name, ok, detail, fix });
   const lastRun = await q("SELECT MAX(ts) t FROM agent_runs");
-  const age = lastRun && lastRun.t ? (now() - lastRun.t) / 36e5 : null;
-  add("Otak AI (Modal/GitHub)", !env.BRAIN_KEY ? null : age != null && (age < 3.5 || h < 7), age == null ? "Belum pernah berjalan" : `Larian terakhir ${age.toFixed(1)} jam lalu`, "Semak Modal (app jombaca-brain) atau GitHub Actions 'Otak Jom Baca'.");
+  const seen = Math.max(+(s.brain_seen || 0), lastRun && lastRun.t || 0);
+  const age = seen ? (now() - seen) / 36e5 : null;
+  add("Otak AI (Modal/GitHub)", !env.BRAIN_KEY ? null : age != null && age < 2.5, age == null ? "Belum pernah berjalan" : `Kali terakhir hidup ${age < 1 ? Math.round(age * 60) + " minit" : age.toFixed(1) + " jam"} lalu${s.brain_seen_by ? " (" + s.brain_seen_by + ")" : ""}`, "Semak Modal (app jombaca-brain) atau GitHub Actions 'Otak Jom Baca'.");
   const errs = await q("SELECT COUNT(*) n, GROUP_CONCAT(agent, ', ') a FROM agent_runs WHERE status!='ok' AND ts>?", now() - 6 * 36e5);
   add("Ralat agen (6 jam)", errs.n < 2, errs.n ? `${errs.n} ralat: ${errs.a}` : "Tiada", "Lihat /admin \u2192 \u{1F9E0} Otak AI \u2192 Larian agen.");
   const em = await q("SELECT COUNT(*) n, MAX(error) e FROM emails WHERE status='failed' AND created>?", now() - DAY);
