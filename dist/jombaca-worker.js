@@ -104,10 +104,10 @@ async flow(m){const rows=await list('flow');
 async leads(m){const rows=await list('leads');
  m.innerHTML=\`<div class="card"><h2>\u{1F9F2} Semua lead (\${rows.length})</h2>\${table(rows,[['id','#'],['created','Masuk',dt],['name','Nama'],['phone','Telefon',v=>v?\`<a href="\${wa(v,'')}" target="_blank">\${esc(v)}</a>\`:''],['email','Emel'],['child_age','Umur'],['stage','Tahap'],['score','Skor'],['src','Sumber'],['ref','Ref'],['bought','Beli',v=>v?'\u2705':''],['unsub','Unsub',v=>v?'\u{1F6AB}':'']])}</div>\`},
 async sales(m){const [orders,coupons]=await Promise.all([list('orders'),list('coupons')]);
- m.innerHTML=\`<div class="card"><h2>\u{1F4B0} Pesanan</h2>\${table(orders,[['created','Bila',dt],['id','ID'],['name','Nama'],['phone','Telefon'],['email','Emel'],['amount','Jumlah',rm],['coupon','Kupon'],['src','Sumber'],['ref','Ref'],['status','Status',v=>\`<span class="tag \${v==='paid'?'ok':''}">\${esc(v)}</span>\`],['license','Lesen']],r=>r.status==='pending'?\`<button class="g" data-a="pd" data-id="\${r.id}">Tanda dibayar</button>\`:r.status==='paid'?\`<button class="r" data-a="rf" data-id="\${r.id}">Refund</button> <button data-a="lr" data-id="\${r.license}">Reset peranti</button>\`:'')}</div>
+ m.innerHTML=\`<div class="card"><h2>\u{1F4B0} Pesanan</h2>\${table(orders,[['created','Bila',dt],['id','ID'],['name','Nama'],['phone','Telefon'],['email','Emel'],['amount','Jumlah',rm],['coupon','Kupon'],['src','Sumber'],['ref','Ref'],['status','Status',v=>\`<span class="tag \${v==='paid'?'ok':''}">\${esc(v)}</span>\`],['license','Lesen']],r=>r.status==='pending'?\`<button class="g" data-a="pd" data-id="\${r.id}">Tanda dibayar</button> <button data-a="pt" data-id="\${r.id}">\u{1F9EA} Ujian</button>\`:r.status==='paid'?\`<button class="r" data-a="rf" data-id="\${r.id}">Refund</button> <button data-a="lr" data-id="\${r.license}">Reset peranti</button>\`:'')}</div>
  <div class="card"><h2>\u{1F3F7}\uFE0F Kupon</h2><div class="row"><input id="cc" placeholder="KOD"><input id="cp" type="number" placeholder="% diskaun" style="width:110px"><input id="co" type="number" placeholder="atau RM off" style="width:110px"><input id="ch" type="number" placeholder="tamat (jam)" style="width:110px"><input id="cm" type="number" placeholder="had guna" style="width:100px"><button class="p" id="cadd">Tambah</button></div><p class="mut">Harga tidak akan turun di bawah floor_sen (Tetapan).</p>\${table(coupons,[['code','Kod'],['pct','%'],['off','Off',v=>v?rm(v):''],['expires','Tamat',dt],['used','Guna'],['max_uses','Had'],['agent','Oleh'],['note','Nota']],r=>\`<button class="r" data-a="cd" data-id="\${esc(r.code)}">Padam</button>\`)}</div>\`;
  $('#cadd').onclick=async()=>{await act('coupon_add',{code:$('#cc').value,pct:+$('#cp').value,off:Math.round(+$('#co').value*100),hours:+$('#ch').value||0,max_uses:+$('#cm').value||0});render()};
- bind(m,{pd:async id=>{if(confirm('Sahkan pesanan '+id+' sudah dibayar? Lesen akan dihantar.')){await act('order_paid',{id});render()}},rf:async id=>{if(confirm('Refund & batalkan lesen '+id+'?')){await act('order_refund',{id});render()}},lr:async key=>{await act('lic_reset',{key});alert('\u2713 Peranti direset')},cd:async id=>{await act('coupon_del',{id});render()}})},
+ bind(m,{pd:async id=>{if(confirm('Sahkan pesanan '+id+' sudah dibayar? Lesen akan dihantar.')){await act('order_paid',{id});render()}},pt:async id=>{if(confirm('Tanda '+id+' sebagai JUALAN UJIAN? Lesen dihantar tetapi tidak dikira dalam statistik.')){await act('order_paid',{id,test:1});render()}},rf:async id=>{if(confirm('Refund & batalkan lesen '+id+'?')){await act('order_refund',{id});render()}},lr:async key=>{await act('lic_reset',{key});alert('\u2713 Peranti direset')},cd:async id=>{await act('coupon_del',{id});render()}})},
 async aff(m){const [affs,comms]=await Promise.all([list('affiliates'),list('commissions')]);const pend=comms.filter(c=>c.status==='pending');
  m.innerHTML=\`<div class="card"><h2>\u{1F91D} Affiliate (\${affs.length})</h2><p class="mut">Pautan pendaftaran untuk dikongsi: <b>\${location.origin}/affiliate</b>. Setiap pembeli juga auto jadi affiliate.</p>\${table(affs,[['code','Kod'],['name','Nama'],['handle','Akaun sosial'],['phone','Telefon'],['payout','Bayaran ke'],['rate','%'],['buyer','Pembeli',v=>v?'\u2713':''],['sales','Jualan'],['owed','Terhutang',rm],['status','Status']],r=>r.status==='active'?\`<button class="r" data-a="ab" data-id="\${esc(r.code)}">Gantung</button>\`:\`<button data-a="aa" data-id="\${esc(r.code)}">Aktifkan</button>\`)}</div>
  <div class="card"><h2>\u{1F4B8} Komisen belum bayar: \${rm(pend.reduce((s,c)=>s+c.amount,0))}</h2>\${table(comms,[['created','Bila',dt],['code','Kod'],['name','Nama'],['payout','Bayar ke'],['order_id','Pesanan'],['amount','Jumlah',rm],['status','Status']],r=>r.status==='pending'?\`<button class="g" data-a="cp" data-id="\${r.id}">Tanda dibayar</button>\`:'')}</div>\`;
@@ -539,26 +539,29 @@ async function fulfill(env, orderId, via) {
   const key = newKey();
   const upd = await env.DB.prepare("UPDATE orders SET status='paid', paid_at=?, license=?, note=? WHERE id=? AND status!='paid'").bind(now(), key, clip(via, 40), o.id).run();
   if (!upd.meta.changes) return o;
+  const isTest = /sandbox/.test(via || "");
   const ops = [env.DB.prepare("INSERT INTO licenses(key,order_id,email,name,created) VALUES(?,?,?,?,?)").bind(key, o.id, o.email, o.name, now())];
   let aff = await env.DB.prepare("SELECT code, token FROM affiliates WHERE email=?").bind(o.email).first();
   if (!aff) aff = await newAffiliate(env, { name: o.name, email: o.email, phone: o.phone }, true);
-  if (o.ref && o.ref !== aff.code) {
+  if (!isTest && o.ref && o.ref !== aff.code) {
     const ra = await env.DB.prepare("SELECT * FROM affiliates WHERE code=? AND status='active'").bind(o.ref).first();
     if (ra && ra.email !== o.email) ops.push(env.DB.prepare("INSERT INTO commissions(code,order_id,amount,created) VALUES(?,?,?,?)").bind(ra.code, o.id, Math.round(o.amount * (ra.rate || +s.aff_rate_pct) / 100), now()));
   }
-  if (o.coupon) ops.push(env.DB.prepare("UPDATE coupons SET used=used+1 WHERE code=?").bind(o.coupon));
-  ops.push(env.DB.prepare("UPDATE leads SET bought=1, stage='customer', updated=? WHERE email=? OR (phone!='' AND phone=?)").bind(now(), o.email, o.phone || "-"));
-  ops.push(env.DB.prepare("UPDATE emails SET status='cancelled' WHERE status='queued' AND kind LIKE 'nurture:%' AND to_email=?").bind(o.email));
-  ops.push(...await variantBump(env, o.vids, "conv"), ...await attribute(env, o.src, "sales"));
+  if (!isTest) {
+    if (o.coupon) ops.push(env.DB.prepare("UPDATE coupons SET used=used+1 WHERE code=?").bind(o.coupon));
+    ops.push(env.DB.prepare("UPDATE leads SET bought=1, stage='customer', updated=? WHERE email=? OR (phone!='' AND phone=?)").bind(now(), o.email, o.phone || "-"));
+    ops.push(env.DB.prepare("UPDATE emails SET status='cancelled' WHERE status='queued' AND kind LIKE 'nurture:%' AND to_email=?").bind(o.email));
+    ops.push(...await variantBump(env, o.vids, "conv"), ...await attribute(env, o.src, "sales"));
+  }
   await env.DB.batch(ops);
-  const pairs = [["sale"], ["rev", o.amount]];
-  if (o.src) pairs.push(["src:" + o.src + ":sale"]);
-  if (o.ref) pairs.push(["ref:" + o.ref + ":sale"]);
+  const pairs = isTest ? [["test_sale"]] : [["sale"], ["rev", o.amount]];
+  if (!isTest && o.src) pairs.push(["src:" + o.src + ":sale"]);
+  if (!isTest && o.ref) pairs.push(["ref:" + o.ref + ":sale"]);
   await bump(env, pairs);
   const app = `${site}/app/?lesen=${key}`;
   const html = emailWrap(s, `<p>Hai ${o.name || ""},</p><p>Terima kasih! Pembelian <b>Jom Baca Pro</b> anda berjaya. \u{1F389}</p><p>Kod lesen anda:</p><p style="font-size:22px;font-weight:bold;letter-spacing:2px">${key}</p><p><a href="${app}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">\u{1F449} Buka Jom Baca Pro</a></p><p>Lesen boleh digunakan pada 5 peranti. Pada peranti lain, buka ${site}/app/ \u2192 \u{1F451} \u2192 "Sudah beli?" dan masukkan kod di atas.</p><p><b>Bonus:</b> anda kini affiliate Jom Baca. Kongsi pautan ini dan dapat komisen setiap jualan:<br>${site}/r/${aff.code}</p><p>Papan affiliate anda: ${site}/affiliate?code=${aff.code}&k=${aff.token}</p>`);
-  await sendEmail(env, s, o.email, "Lesen Jom Baca Pro anda: " + key, html).catch((e) => env.DB.prepare("INSERT INTO emails(created,to_email,subject,html,send_at,status,kind,error) VALUES(?,?,?,?,?,?,?,?)").bind(now(), o.email, "Lesen Jom Baca Pro anda: " + key, html, now() + 6e5, "queued", "license", String(e.message || e)).run());
-  await tg(env, `\u{1F4B0} <b>Jualan!</b> ${rm(o.amount)} \xB7 ${o.name || "-"}
+  await sendEmail(env, s, o.email, (isTest ? "[UJIAN] " : "") + "Lesen Jom Baca Pro anda: " + key, html).catch((e) => env.DB.prepare("INSERT INTO emails(created,to_email,subject,html,send_at,status,kind,error) VALUES(?,?,?,?,?,?,?,?)").bind(now(), o.email, "Lesen Jom Baca Pro anda: " + key, html, now() + 6e5, "queued", "license", String(e.message || e)).run());
+  await tg(env, (isTest ? "\u{1F9EA} <b>Jualan UJIAN (sandbox)</b>, tidak dikira dalam statistik.\n" : "") + `\u{1F4B0} <b>Jualan!</b> ${rm(o.amount)} \xB7 ${o.name || "-"}
 Sumber: ${o.src || "-"} \xB7 Ref: ${o.ref || "-"} \xB7 Kupon: ${o.coupon || "-"}`);
   return { ...o, status: "paid", license: key };
 }
@@ -999,7 +1002,7 @@ async function handle(req, env, ctx) {
     out.v = pickVariants(vs);
     const { results: ts } = await env.DB.prepare("SELECT name,text FROM testimonials WHERE status='approved' ORDER BY id DESC LIMIT 6").all();
     out.testimonials = ts;
-    const paid = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status='paid'").first();
+    const paid = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status='paid' AND COALESCE(note,'') NOT LIKE '%sandbox%'").first();
     out.buyers = paid.n >= 20 ? paid.n : null;
     const src = clip(url.searchParams.get("src"), 40);
     ctx.waitUntil(Promise.all([env.DB.batch(Object.values(out.v).map((v) => env.DB.prepare("UPDATE variants SET views=views+1 WHERE id=?").bind(v.id))), bump(env, [["lp_view"], ...src ? [["src:" + src + ":view"]] : []])]));
@@ -1293,7 +1296,7 @@ async function handle(req, env, ctx) {
           return J({ ok: true, text: postText(pp, siteUrl(env, s, req)) });
         }
         case "order_paid":
-          await fulfill(env, id, "manual-admin");
+          await fulfill(env, id, d.test ? "manual-sandbox-test" : "manual-admin");
           break;
         case "order_refund": {
           const o = await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(id).first();

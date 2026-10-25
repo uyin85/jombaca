@@ -351,26 +351,29 @@ async function fulfill(env, orderId, via) {
   const key = newKey();
   const upd = await env.DB.prepare("UPDATE orders SET status='paid', paid_at=?, license=?, note=? WHERE id=? AND status!='paid'").bind(now(), key, clip(via, 40), o.id).run();
   if (!upd.meta.changes) return o;
+  const isTest = /sandbox/.test(via || "");  // jualan ujian: jangan masuk statistik, komisen atau pembelajaran agen
   const ops = [env.DB.prepare("INSERT INTO licenses(key,order_id,email,name,created) VALUES(?,?,?,?,?)").bind(key, o.id, o.email, o.name, now())];
   let aff = await env.DB.prepare("SELECT code, token FROM affiliates WHERE email=?").bind(o.email).first();
   if (!aff) aff = await newAffiliate(env, { name: o.name, email: o.email, phone: o.phone }, true);
-  if (o.ref && o.ref !== aff.code) {
+  if (!isTest && o.ref && o.ref !== aff.code) {
     const ra = await env.DB.prepare("SELECT * FROM affiliates WHERE code=? AND status='active'").bind(o.ref).first();
     if (ra && ra.email !== o.email) ops.push(env.DB.prepare("INSERT INTO commissions(code,order_id,amount,created) VALUES(?,?,?,?)").bind(ra.code, o.id, Math.round(o.amount * (ra.rate || +s.aff_rate_pct) / 100), now()));
   }
+  if (!isTest) {
   if (o.coupon) ops.push(env.DB.prepare("UPDATE coupons SET used=used+1 WHERE code=?").bind(o.coupon));
   ops.push(env.DB.prepare("UPDATE leads SET bought=1, stage='customer', updated=? WHERE email=? OR (phone!='' AND phone=?)").bind(now(), o.email, o.phone || "-"));
   ops.push(env.DB.prepare("UPDATE emails SET status='cancelled' WHERE status='queued' AND kind LIKE 'nurture:%' AND to_email=?").bind(o.email));
   ops.push(...await variantBump(env, o.vids, "conv"), ...await attribute(env, o.src, "sales"));
+  }
   await env.DB.batch(ops);
-  const pairs = [["sale"], ["rev", o.amount]];
-  if (o.src) pairs.push(["src:" + o.src + ":sale"]);
-  if (o.ref) pairs.push(["ref:" + o.ref + ":sale"]);
+  const pairs = isTest ? [["test_sale"]] : [["sale"], ["rev", o.amount]];
+  if (!isTest && o.src) pairs.push(["src:" + o.src + ":sale"]);
+  if (!isTest && o.ref) pairs.push(["ref:" + o.ref + ":sale"]);
   await bump(env, pairs);
   const app = `${site}/app/?lesen=${key}`;
   const html = emailWrap(s, `<p>Hai ${o.name || ""},</p><p>Terima kasih! Pembelian <b>Jom Baca Pro</b> anda berjaya. 🎉</p><p>Kod lesen anda:</p><p style="font-size:22px;font-weight:bold;letter-spacing:2px">${key}</p><p><a href="${app}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">👉 Buka Jom Baca Pro</a></p><p>Lesen boleh digunakan pada 5 peranti. Pada peranti lain, buka ${site}/app/ → 👑 → "Sudah beli?" dan masukkan kod di atas.</p><p><b>Bonus:</b> anda kini affiliate Jom Baca. Kongsi pautan ini dan dapat komisen setiap jualan:<br>${site}/r/${aff.code}</p><p>Papan affiliate anda: ${site}/affiliate?code=${aff.code}&k=${aff.token}</p>`);
-  await sendEmail(env, s, o.email, "Lesen Jom Baca Pro anda: " + key, html).catch(e => env.DB.prepare("INSERT INTO emails(created,to_email,subject,html,send_at,status,kind,error) VALUES(?,?,?,?,?,?,?,?)").bind(now(), o.email, "Lesen Jom Baca Pro anda: " + key, html, now() + 600e3, "queued", "license", String(e.message || e)).run());
-  await tg(env, `💰 <b>Jualan!</b> ${rm(o.amount)} · ${o.name || "-"}\nSumber: ${o.src || "-"} · Ref: ${o.ref || "-"} · Kupon: ${o.coupon || "-"}`);
+  await sendEmail(env, s, o.email, (isTest ? "[UJIAN] " : "") + "Lesen Jom Baca Pro anda: " + key, html).catch(e => env.DB.prepare("INSERT INTO emails(created,to_email,subject,html,send_at,status,kind,error) VALUES(?,?,?,?,?,?,?,?)").bind(now(), o.email, "Lesen Jom Baca Pro anda: " + key, html, now() + 600e3, "queued", "license", String(e.message || e)).run());
+  await tg(env, (isTest ? "🧪 <b>Jualan UJIAN (sandbox)</b>, tidak dikira dalam statistik.\n" : "") + `💰 <b>Jualan!</b> ${rm(o.amount)} · ${o.name || "-"}\nSumber: ${o.src || "-"} · Ref: ${o.ref || "-"} · Kupon: ${o.coupon || "-"}`);
   return { ...o, status: "paid", license: key };
 }
 
@@ -724,7 +727,7 @@ async function handle(req, env, ctx) {
     out.v = pickVariants(vs);
     const { results: ts } = await env.DB.prepare("SELECT name,text FROM testimonials WHERE status='approved' ORDER BY id DESC LIMIT 6").all();
     out.testimonials = ts;
-    const paid = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status='paid'").first();
+    const paid = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status='paid' AND COALESCE(note,'') NOT LIKE '%sandbox%'").first();
     out.buyers = paid.n >= 20 ? paid.n : null;
     const src = clip(url.searchParams.get("src"), 40);
     ctx.waitUntil(Promise.all([env.DB.batch(Object.values(out.v).map(v => env.DB.prepare("UPDATE variants SET views=views+1 WHERE id=?").bind(v.id))), bump(env, [["lp_view"], ...(src ? [["src:" + src + ":view"]] : [])])]));
@@ -975,7 +978,7 @@ async function handle(req, env, ctx) {
         case "post_update": await run("UPDATE posts SET body=COALESCE(?,body), status=COALESCE(?,status), scheduled_at=COALESCE(?,scheduled_at), media_url=COALESCE(?,media_url) WHERE id=?", d.body ?? null, d.status ?? null, d.scheduled_at ?? null, d.media_url ?? null, +id); break;
         case "post_manual_done": await run("UPDATE posts SET status='posted', posted_at=?, ext_id=? WHERE id=?", now(), clip(d.url, 300), +id); break;
         case "post_text": { const pp = await env.DB.prepare("SELECT * FROM posts WHERE id=?").bind(+id).first(); return J({ ok: true, text: postText(pp, siteUrl(env, s, req)) }); }
-        case "order_paid": await fulfill(env, id, "manual-admin"); break;
+        case "order_paid": await fulfill(env, id, d.test ? "manual-sandbox-test" : "manual-admin"); break;
         case "order_refund": {
           const o = await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(id).first(); if (!o) return bad("?");
           await env.DB.batch([env.DB.prepare("UPDATE orders SET status='refunded' WHERE id=?").bind(id), env.DB.prepare("UPDATE licenses SET status='revoked' WHERE order_id=?").bind(id), env.DB.prepare("UPDATE commissions SET status='void' WHERE order_id=? AND status='pending'").bind(id)]);
