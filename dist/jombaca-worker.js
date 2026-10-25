@@ -170,13 +170,14 @@ async set(m){const [rows,ov]=await Promise.all([list('settings'),api('/api/admin
  <div class="row"><input id="fbk" type="password" placeholder="Token Facebook" style="flex:1;min-width:200px"><input id="fbn" placeholder="Nama Page (pilihan)" style="width:170px"><button class="p" data-a="fbc">Sambung FB Page</button>\${fp?'<button class="r" data-a="fbd">Putuskan</button>':''}</div>
  <h3>Instagram \${IG.ig_user?\`<span class="tag ok">\u2713 @\${esc(IG.ig_user)}</span>\`:'<span class="tag warn">belum dikesan</span>'}</h3>
  <p class="mut">IG guna token FB Page. Syarat: akaun IG jenis Professional, dipautkan ke Page di atas, dan token ada kebenaran instagram_basic + instagram_content_publish. IG hanya menerima post bergambar atau video (dilukis automatik oleh otak).</p>
- <div class="row"><button data-a="igc">Semak sambungan IG</button></div>
+ <div class="row"><button data-a="igc">Semak sambungan IG</button><button data-a="mtr">\u{1F9EA} Uji gambar &amp; video (keputusan ke Telegram dalam 1 jam)</button></div>
  <p class="mut" style="margin-top:8px">Auto-post hanya berjalan bila <b>auto_post = 1</b> (semasa: \${esc(g('auto_post')||'-')}).</p>\`})()}</div>
  <div class="card"><h2>\u2699\uFE0F Tetapan</h2>\${table(rows,[['k','Kunci',v=>\`<b>\${esc(v)}</b><div class="mut" style="font-size:12px;max-width:320px">\${esc(help[v]||'')}</div>\`],['v','Nilai',(v,r)=>String(v).length>80?\`<textarea data-k="\${esc(r.k)}">\${esc(v)}</textarea>\`:\`<input data-k="\${esc(r.k)}" value="\${esc(v)}" style="width:100%">\`]],r=>\`<button class="p" data-a="sv" data-id="\${esc(r.k)}">Simpan</button>\`)}</div>
  <div class="card"><h2>Ujian</h2><div class="row"><input id="te" placeholder="emel anda"><button data-a="te">Hantar emel ujian</button><button data-a="tt">Ujian Telegram</button><button data-a="tk">Jalankan cron sekarang (post + emel)</button></div></div>\`;
  bind(m,{sv:async k=>{const el=m.querySelector(\`[data-k="\${k}"]\`);await act('setting_set',{k,v:el.value});el.style.borderColor='var(--ok)'},te:async()=>{const j=await act('test_email',{to:$('#te').value});alert(j.ok?'\u2713 Dihantar':'Gagal: '+j.error)},tt:async()=>{const j=await act('test_tg');alert(j.ok?'\u2713 Telegram OK':'Gagal: semak TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID')},tk:async()=>{await act('tick');alert('\u2713 Cron dijalankan')},
   thc:async()=>{const j=await act('threads_connect',{token:$('#thk').value});alert(j.ok?'\u2713 Threads disambung: @'+j.username+(j.exchanged?' (token 60 hari)':''):'Gagal: '+j.error);render()},
   fbc:async()=>{const j=await act('fb_connect',{token:$('#fbk').value,page:$('#fbn').value});alert(j.ok?'\u2713 FB Page disambung: '+j.page+(j.ig?'\\n\u2713 Instagram: @'+j.ig:'')+(j.long_lived?'':'\\n\u26A0\uFE0F Token Page mungkin tamat dalam 1 jam: tambah secret FB_APP_ID & FB_APP_SECRET untuk token kekal.'):'Gagal: '+j.error);render()},
+  mtr:async()=>{await act('media_test_req');alert('\u2713 Otak akan jana 1 gambar + 1 video contoh pada larian seterusnya (minit :05) dan hantar pautan ke Telegram. Tiada post dibuat.')},
   igc:async()=>{const j=await act('ig_resolve');alert(j.ok?'\u2713 Instagram dikesan: @'+j.username:'Gagal: '+j.error);render()},
   thd:async()=>{if(confirm('Putuskan Threads?')){await act('social_disconnect',{p:'threads'});render()}},
   fbd:async()=>{if(confirm('Putuskan FB Page?')){await act('social_disconnect',{p:'fb'});render()}}})},
@@ -1000,10 +1001,13 @@ async function brainWrite(env, kind, d, agent) {
   const A = clip(agent || d.agent || "brain", 30);
   const rows = Array.isArray(d.rows) ? d.rows.slice(0, 40) : [];
   switch (kind) {
-    case "heartbeat":
+    case "heartbeat": {
       await setSetting(env, "brain_seen", now());
       await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-");
-      return { ok: true };
+      const mt = s.media_test_req === "1";
+      if (mt) await setSetting(env, "media_test_req", "0");
+      return { ok: true, media_test: mt };
+    }
     case "run": {
       await env.DB.prepare("INSERT INTO agent_runs(ts,agent,status,summary,error,llm) VALUES(?,?,?,?,?,?)").bind(now(), A, clip(d.status, 20), clip(d.summary, 4e3), clip(d.error, 2e3), clip(d.llm, 60)).run();
       return { ok: true };
@@ -1598,7 +1602,7 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
         angles: "SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC",
         prompts: "SELECT * FROM agent_prompts ORDER BY id DESC LIMIT 50",
         plans: "SELECT * FROM plans ORDER BY day DESC LIMIT 14",
-        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','ig_user_id','ig_checked','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
+        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','ig_user_id','ig_checked','media_test_req','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
         app: "SELECT k, SUM(n) n FROM stats WHERE day>=date('now','-13 day') AND (k LIKE 'app:%' OR k LIKE 'src:%' OR k LIKE 'ref:%') GROUP BY k ORDER BY n DESC LIMIT 200"
       };
       if (!Q[t]) return bad("t?");
@@ -1651,6 +1655,9 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
           return J(await threadsConnect(env, d.token).catch((e) => ({ ok: false, error: e.message })));
         case "fb_connect":
           return J(await fbConnect(env, d.token, d.page).catch((e) => ({ ok: false, error: e.message })));
+        case "media_test_req":
+          await setSetting(env, "media_test_req", "1");
+          break;
         case "ig_resolve": {
           const ig = await igResolve(env, s);
           return J(ig ? { ok: true, username: ig.username } : { ok: false, error: "Akaun IG belum dipautkan ke Page ini, atau token tiada kebenaran instagram_basic." });

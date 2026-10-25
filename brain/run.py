@@ -34,7 +34,9 @@ def tick(hq=None):
     hq = hq or HQ()
     n = now_myt()
     try:  # isyarat "saya hidup" untuk Pengawas, walaupun tiada agen dijadualkan jam ini
-        hq.write("heartbeat", "brain", via="github" if os.environ.get("GITHUB_ACTIONS") else "modal")
+        hb = hq.write("heartbeat", "brain", via="github" if os.environ.get("GITHUB_ACTIONS") else "modal")
+        if hb.get("media_test"):
+            media_test(exit_after=False)
     except Exception as e:  # noqa: BLE001
         print("heartbeat gagal:", e)
     ran = []
@@ -51,7 +53,7 @@ def tick(hq=None):
     return ran
 
 
-def media_test():
+def media_test(exit_after=True):
     """Jana 1 gambar + 1 video contoh, muat naik, lapor ke HQ (Larian agen) & Telegram. Tiada post dibuat."""
     import shutil
     import tempfile
@@ -68,21 +70,23 @@ def media_test():
     specs = {"gambar": {"type": "image", "headline": "Anak kenal huruf tapi masih tak boleh membaca?", "sub": "Rahsianya: gabung suku kata.", "tiles": ["bo", "la"], "word": "bola"},
              "video": {"type": "video", "headline": "10 minit sehari, anak boleh baca perkataan pertama", "tiles": ["ku", "cing"], "word": "kucing"}}
     for name, v in specs.items():
-        spec = media.clean_spec(v)
         try:
+            spec = media.clean_spec(v)
             with tempfile.TemporaryDirectory() as tmp:
                 ext, ct = ("mp4", "video/mp4") if spec["type"] == "video" else ("png", "image/png")
                 out = f"{tmp}/t.{ext}"
                 (media.render_video if spec["type"] == "video" else media.render_image)(spec, host, out)
                 res[name] = hq.upload(out, ct)
-        except Exception:  # noqa: BLE001
+        except BaseException:  # noqa: BLE001
             errs.append(f"{name}: {traceback.format_exc()[-1500:]}")
     ok = len(res) == 2
     summary = f"{env}\n" + "\n".join(f"{k}: {v}" for k, v in res.items())
     hq.write("run", "media-test", status="ok" if ok else "error", summary=summary, error="\n".join(errs))
     hq.write("notify", "brain", text="🧪 Ujian media (tiada post dibuat)\n" + summary + ("\n⚠️ " + "\n".join(e[-300:] for e in errs) if errs else ""))
     print(summary, errs)
-    sys.exit(0 if ok else 1)
+    if exit_after:
+        sys.exit(0 if ok else 1)
+    return ok
 
 
 def main(argv):
