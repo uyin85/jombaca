@@ -6,6 +6,7 @@
   BRAIN_DRY=1 ...                          cetak tindakan tanpa menulis ke HQ
 """
 import os
+import re
 import sys
 import traceback
 
@@ -59,7 +60,10 @@ def media_test(exit_after=True):
     import tempfile
     from . import media
     hq = HQ()
-    host = hq.url.split("//", 1)[-1]
+    try:
+        host = re.sub(r"^https?://", "", hq.state("media-test")["product"]["site"]).rstrip("/")
+    except Exception:  # noqa: BLE001
+        host = hq.url.split("//", 1)[-1]
     res, errs = {}, []
     env = f"ffmpeg={bool(shutil.which('ffmpeg'))} fonts={media._font('Fredoka-600.woff2')}"
     try:
@@ -80,7 +84,7 @@ def media_test(exit_after=True):
         except BaseException:  # noqa: BLE001
             errs.append(f"{name}: {traceback.format_exc()[-1500:]}")
     ok = len(res) == 2
-    summary = f"{env}\n" + "\n".join(f"{k}: {v}" for k, v in res.items())
+    summary = f"{env} suara={media.LAST['tts']}\n" + "\n".join(f"{k}: {v}" for k, v in res.items())
     hq.write("run", "media-test", status="ok" if ok else "error", summary=summary, error="\n".join(errs))
     hq.write("notify", "brain", text="🧪 Ujian media (tiada post dibuat)\n" + summary + ("\n⚠️ " + "\n".join(e[-300:] for e in errs) if errs else ""))
     print(summary, errs)

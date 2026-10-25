@@ -28,7 +28,7 @@ jobs:
         run: |
           H=$(( ( $(date -u +%-H) + 8 ) % 24 ))
           if [ "$INPUT_AGENT" = "social" ] || [ "$INPUT_AGENT" = "media-test" ] || { [ $H -ge 7 ] && [ $H -le 9 ]; }; then
-            (command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)) && pip install -q playwright==1.47.0 edge-tts==7.2.0 && python -m playwright install --with-deps chromium
+            (command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)) && pip install -q playwright==1.47.0 edge-tts==7.2.0 gTTS==2.5.4 && python -m playwright install --with-deps chromium
           else
             echo "Bukan waktu agen Sosial ($H:00 MYT). Langkau."
           fi

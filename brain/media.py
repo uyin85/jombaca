@@ -19,6 +19,7 @@ import tempfile
 W_IMG, H_IMG = 1080, 1350
 W_VID, H_VID = 1080, 1920
 FPS = 30
+LAST = {"tts": ""}  # status suara larian terakhir (untuk laporan)
 VOICE = os.environ.get("JB_TTS_VOICE", "ms-MY-YasminNeural")
 FONT_DIRS = [os.environ.get("JB_FONTS", ""), os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")]
 
@@ -172,6 +173,25 @@ async def _tts(text, out):
     await edge_tts.Communicate(text, VOICE, rate="-5%").save(out)
 
 
+def _say(text, out):
+    """Suara ms-MY: cuba edge-tts dahulu, jika gagal guna Google (gTTS, bahasa 'ms'). Pulang nama enjin."""
+    err = None
+    try:
+        asyncio.run(_tts(text, out))
+        if os.path.getsize(out) > 1000:
+            return "edge"
+    except Exception as e:  # noqa: BLE001
+        err = e
+    try:
+        from gtts import gTTS
+        gTTS(text, lang="ms").save(out)
+        if os.path.getsize(out) > 1000:
+            return "gtts"
+    except Exception as e2:  # noqa: BLE001
+        raise RuntimeError(f"edge: {err!r} | gtts: {e2!r}") from e2
+    raise RuntimeError(f"edge: {err!r} | gtts: fail kosong")
+
+
 def _dur(path):
     try:
         r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", path], capture_output=True, text=True, timeout=30)
@@ -184,15 +204,18 @@ def _voice(spec, tmp):
     """Pulang [(fail, mula_saat)] dan tl. Gagal → tiada suara, masa lalai."""
     tiles = spec["tiles"] or ["ba", "ca"]
     parts = [spec["headline"], ". ".join(tiles) + ". " + "".join(tiles) + "!", "Cuba enam tahap percuma. Pautan di bio."]
-    files = []
+    files, engines = [], []
     try:
         for i, t in enumerate(parts):
             f = os.path.join(tmp, f"v{i}.mp3")
-            asyncio.run(_tts(t, f))
+            engines.append(_say(t, f))
             files.append((f, _dur(f)))
     except Exception as e:  # noqa: BLE001
-        print("tts gagal, video tanpa suara:", e)
+        print("tts gagal, video tanpa suara:", repr(e))
+        LAST["tts"] = f"GAGAL: {type(e).__name__}: {str(e)[:300]}"
         files = []
+    else:
+        LAST["tts"] = f"ok {'/'.join(sorted(set(engines)))} ({len(files)} klip, {sum(d for _, d in files):.1f}s)"
     d = [x[1] for x in files] if files else [0, 0, 0]
     hook_end = max(3.0, d[0] + 0.6)
     demo_end = hook_end + max(3.2, d[1] + 0.8)
