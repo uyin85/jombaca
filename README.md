@@ -201,3 +201,9 @@ npm install && printf 'ADMIN_KEY=a\nBRAIN_KEY=b\n' > .dev.vars && npx wrangler d
 HQ_URL=http://127.0.0.1:8787 BRAIN_KEY=b BRAIN_FAKE_LLM=1 python -m brain.run all   # paip agen tanpa kunci LLM
 HQ_URL=http://127.0.0.1:8787 BRAIN_KEY=b BRAIN_DRY=1 GEMINI_API_KEY=... python -m brain.run agent social   # LLM sebenar, tanpa menulis
 ```
+
+## Log perubahan
+
+- **v2.1 (25 Okt 2026):** kurikulum 40 tahap ikut pola KV → KVK → KVKK, mod Autisme/Disleksia/Ketik Jawapan, permainan bunyi, soalan pemahaman, ujian penempatan & kelancaran.
+- **v2.0.1:** pembetulan Bahasa Melayu (sapi → satu, jidar → jiran, dll.), suara ms-MY diutamakan.
+- **v2.0:** Jom Baca Pro + HQ + otak multi-agen.
