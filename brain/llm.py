@@ -86,18 +86,29 @@ def call_gemini(system, user, tier, temperature):
         "contents": [{"role": "user", "parts": [{"text": user}]}],
         "generationConfig": {"temperature": temperature, "responseMimeType": "application/json", "maxOutputTokens": 8192},
     }
-    for attempt in range(2):
+    # Bila model utama sesak (503/429) atau lambat, cuba lagi dengan jeda, kemudian tukar ke model sandaran.
+    backup = os.environ.get("GEMINI_MODEL_BACKUP") or ("gemini-flash-latest" if tier == "fast" else "gemini-flash-lite-latest")
+    plan = [(model, 0), (model, 15), (backup, 5), (backup, 30)]
+    last = None
+    for i, (m, wait) in enumerate(plan):
+        if wait:
+            time.sleep(wait)
         try:
-            d = _post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}", body, {})
+            d = _post(f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={key}", body, {}, timeout=90)
             parts = d["candidates"][0]["content"]["parts"]
-            return "".join(p.get("text", "") for p in parts), "gemini:" + model
+            return "".join(p.get("text", "") for p in parts), "gemini:" + m
         except urllib.error.HTTPError as e:
-            if e.code == 404 and attempt == 0:
+            last = e
+            if e.code == 404 and i == 0:
                 alt = _gemini_pick(tier)
-                if alt and alt != model:
-                    model = alt
+                if alt and alt != m:
+                    plan[1] = (alt, 0)
                     continue
-            raise
+            if e.code not in (404, 429, 500, 502, 503, 504):
+                raise
+        except (TimeoutError, OSError) as e:  # termasuk "read operation timed out"
+            last = e
+    raise last
 
 
 def call_anthropic(system, user, tier, temperature):

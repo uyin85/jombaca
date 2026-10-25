@@ -666,6 +666,7 @@ async function brainWrite(env, kind, d, agent) {
   const A = clip(agent || d.agent || "brain", 30);
   const rows = Array.isArray(d.rows) ? d.rows.slice(0, 40) : [];
   switch (kind) {
+    case "unclaim": { await env.DB.prepare("DELETE FROM claims WHERE agent=? AND slot=?").bind(A, clip(d.slot, 40)).run(); return { ok: true }; }
     case "heartbeat": { await setSetting(env, "brain_seen", now()); await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-"); const mt = s.media_test_req === "1" && d.via === "modal"; if (mt) await setSetting(env, "media_test_req", "0"); return { ok: true, media_test: mt }; }
     case "run": {
       await env.DB.prepare("INSERT INTO agent_runs(ts,agent,status,summary,error,llm) VALUES(?,?,?,?,?,?)").bind(now(), A, clip(d.status, 20), clip(d.summary, 4000), clip(d.error, 2000), clip(d.llm, 60)).run();

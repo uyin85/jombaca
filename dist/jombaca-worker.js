@@ -1003,6 +1003,10 @@ async function brainWrite(env, kind, d, agent) {
   const A = clip(agent || d.agent || "brain", 30);
   const rows = Array.isArray(d.rows) ? d.rows.slice(0, 40) : [];
   switch (kind) {
+    case "unclaim": {
+      await env.DB.prepare("DELETE FROM claims WHERE agent=? AND slot=?").bind(A, clip(d.slot, 40)).run();
+      return { ok: true };
+    }
     case "heartbeat": {
       await setSetting(env, "brain_seen", now());
       await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-");

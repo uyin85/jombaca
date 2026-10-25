@@ -48,8 +48,13 @@ def tick(hq=None):
             if 0 <= n.hour - h <= 2:  # tetingkap 3 jam untuk kejar larian yang terlepas
                 slot = f"{n.date().isoformat()}-{h:02d}"
                 if hq.claim(name, slot):
-                    run_agent(hq, name)
-                    ran.append(name)
+                    ok = run_agent(hq, name)
+                    ran.append(name if ok else name + "(gagal)")
+                    if not ok:  # lepaskan slot supaya larian seterusnya (dalam tetingkap 3 jam) cuba semula
+                        try:
+                            hq.write("unclaim", name, slot=slot)
+                        except Exception as e:  # noqa: BLE001
+                            print("unclaim gagal:", e)
     print(f"tick {n.isoformat()}: {ran or 'tiada agen dijadualkan'}")
     return ran
 
