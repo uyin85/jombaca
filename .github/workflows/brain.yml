@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       agent:
-        description: "Nama agen untuk dijalankan sekarang (ceo, social, creative, marketing, leads, affiliate, product, reflect). Kosong = ikut jadual."
+        description: "Nama agen untuk dijalankan sekarang (ceo, social, creative, marketing, leads, affiliate, product, reflect, atau media-test). Kosong = ikut jadual."
         required: false
         default: ""
 permissions:
@@ -27,7 +27,7 @@ jobs:
           INPUT_AGENT: ${{ inputs.agent }}
         run: |
           H=$(( ( $(date -u +%-H) + 8 ) % 24 ))
-          if [ "$INPUT_AGENT" = "social" ] || { [ $H -ge 7 ] && [ $H -le 9 ]; }; then
+          if [ "$INPUT_AGENT" = "social" ] || [ "$INPUT_AGENT" = "media-test" ] || { [ $H -ge 7 ] && [ $H -le 9 ]; }; then
             pip install -q playwright==1.47.0 edge-tts==7.2.0 && python -m playwright install --with-deps chromium
           else
             echo "Bukan waktu agen Sosial ($H:00 MYT). Langkau."

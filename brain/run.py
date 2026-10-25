@@ -51,9 +51,26 @@ def tick(hq=None):
     return ran
 
 
+def media_test():
+    """Jana 1 gambar + 1 video contoh, muat naik, hantar pautan ke Telegram. Tiada post dibuat."""
+    from . import media
+    hq = HQ()
+    host = hq.url.split("//", 1)[-1]
+    if not media.available():
+        hq.write("notify", "brain", text="🧪 Ujian media GAGAL: Playwright/ffmpeg tiada di persekitaran ini.")
+        sys.exit(1)
+    img = media.make(media.clean_spec({"type": "image", "headline": "Anak kenal huruf tapi masih tak boleh membaca?", "sub": "Rahsianya: gabung suku kata.", "tiles": ["bo", "la"], "word": "bola"}), host, hq)
+    vid = media.make(media.clean_spec({"type": "video", "headline": "10 minit sehari, anak boleh baca perkataan pertama", "tiles": ["ku", "cing"], "word": "kucing"}), host, hq)
+    hq.write("notify", "brain", text=f"🧪 Ujian media (tiada post dibuat)\nGambar: {img or 'GAGAL'}\nVideo: {vid or 'GAGAL'}")
+    print("gambar:", img, "video:", vid)
+    sys.exit(0 if img and vid else 1)
+
+
 def main(argv):
     if not argv or argv[0] == "tick":
         tick()
+    elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "media-test":
+        media_test()
     elif argv[0] == "agent" and len(argv) > 1:
         ok = run_agent(HQ(), argv[1])
         sys.exit(0 if ok else 1)
