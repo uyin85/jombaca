@@ -53,7 +53,7 @@
   document.getElementById("t").innerHTML = h;
   document.getElementById("t").onclick = e => {
     const td = e.target.closest("td"); if (!td) return;
-    try { speechSynthesis.cancel(); const t = td.textContent.length === 1 ? { a: "aa", i: "ii", u: "uu", e: "eh", o: "oo" }[td.textContent] || td.textContent : td.textContent; const u = new SpeechSynthesisUtterance(t); const v = speechSynthesis.getVoices().find(v => /^(id|ms)/i.test(v.lang)); if (v) u.voice = v; u.lang = v ? v.lang : "id-ID"; u.rate = .8; speechSynthesis.speak(u); } catch (x) {}
+    try { speechSynthesis.cancel(); const t = td.textContent.length === 1 ? { a: "aa", i: "ii", u: "uu", e: "eh", o: "oo" }[td.textContent] || td.textContent : td.textContent; const u = new SpeechSynthesisUtterance(t); const v = (speechSynthesis.getVoices().find(v => /^ms/i.test(v.lang)) || speechSynthesis.getVoices().find(v => /^id/i.test(v.lang))); if (v) u.voice = v; u.lang = v ? v.lang : "ms-MY"; u.rate = .8; speechSynthesis.speak(u); } catch (x) {}
   };
 </script>
 </body>

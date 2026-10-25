@@ -318,7 +318,7 @@
   const EXTRA = ["ma", "si", "pa", "le", "nu", "ra", "de"];
   const COLORS = ["r", "a", "g", "b", "v"];
   let wi = 0, got = [];
-  function say(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); const v = speechSynthesis.getVoices().find(v => /^(id|ms)/i.test(v.lang)); if (v) u.voice = v; u.lang = v ? v.lang : "id-ID"; u.rate = .85; speechSynthesis.speak(u); } catch (e) {} }
+  function say(t) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); const v = (speechSynthesis.getVoices().find(v => /^ms/i.test(v.lang)) || speechSynthesis.getVoices().find(v => /^id/i.test(v.lang))); if (v) u.voice = v; u.lang = v ? v.lang : "ms-MY"; u.rate = .85; speechSynthesis.speak(u); } catch (e) {} }
   function round() {
     const w = WORDS[wi % WORDS.length]; got = [];
     $("pPic").textContent = w[2]; $("play").classList.remove("win");
