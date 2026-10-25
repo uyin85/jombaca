@@ -52,18 +52,37 @@ def tick(hq=None):
 
 
 def media_test():
-    """Jana 1 gambar + 1 video contoh, muat naik, hantar pautan ke Telegram. Tiada post dibuat."""
+    """Jana 1 gambar + 1 video contoh, muat naik, lapor ke HQ (Larian agen) & Telegram. Tiada post dibuat."""
+    import shutil
+    import tempfile
     from . import media
     hq = HQ()
     host = hq.url.split("//", 1)[-1]
-    if not media.available():
-        hq.write("notify", "brain", text="🧪 Ujian media GAGAL: Playwright/ffmpeg tiada di persekitaran ini.")
-        sys.exit(1)
-    img = media.make(media.clean_spec({"type": "image", "headline": "Anak kenal huruf tapi masih tak boleh membaca?", "sub": "Rahsianya: gabung suku kata.", "tiles": ["bo", "la"], "word": "bola"}), host, hq)
-    vid = media.make(media.clean_spec({"type": "video", "headline": "10 minit sehari, anak boleh baca perkataan pertama", "tiles": ["ku", "cing"], "word": "kucing"}), host, hq)
-    hq.write("notify", "brain", text=f"🧪 Ujian media (tiada post dibuat)\nGambar: {img or 'GAGAL'}\nVideo: {vid or 'GAGAL'}")
-    print("gambar:", img, "video:", vid)
-    sys.exit(0 if img and vid else 1)
+    res, errs = {}, []
+    env = f"ffmpeg={bool(shutil.which('ffmpeg'))} fonts={media._font('Fredoka-600.woff2')}"
+    try:
+        import edge_tts  # noqa: F401
+        env += " tts=ok"
+    except Exception as e:  # noqa: BLE001
+        env += f" tts=tiada({e})"
+    specs = {"gambar": {"type": "image", "headline": "Anak kenal huruf tapi masih tak boleh membaca?", "sub": "Rahsianya: gabung suku kata.", "tiles": ["bo", "la"], "word": "bola"},
+             "video": {"type": "video", "headline": "10 minit sehari, anak boleh baca perkataan pertama", "tiles": ["ku", "cing"], "word": "kucing"}}
+    for name, v in specs.items():
+        spec = media.clean_spec(v)
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                ext, ct = ("mp4", "video/mp4") if spec["type"] == "video" else ("png", "image/png")
+                out = f"{tmp}/t.{ext}"
+                (media.render_video if spec["type"] == "video" else media.render_image)(spec, host, out)
+                res[name] = hq.upload(out, ct)
+        except Exception:  # noqa: BLE001
+            errs.append(f"{name}: {traceback.format_exc()[-1500:]}")
+    ok = len(res) == 2
+    summary = f"{env}\n" + "\n".join(f"{k}: {v}" for k, v in res.items())
+    hq.write("run", "media-test", status="ok" if ok else "error", summary=summary, error="\n".join(errs))
+    hq.write("notify", "brain", text="🧪 Ujian media (tiada post dibuat)\n" + summary + ("\n⚠️ " + "\n".join(e[-300:] for e in errs) if errs else ""))
+    print(summary, errs)
+    sys.exit(0 if ok else 1)
 
 
 def main(argv):
