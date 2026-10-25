@@ -34,3 +34,14 @@ class HQ:
             print(f"[DRY] write {kind}: {json.dumps(payload, ensure_ascii=False)[:600]}")
             return {"ok": True, "dry": True}
         return self._req("POST", "/api/brain/write", payload)
+
+    def upload(self, path, content_type):
+        """Muat naik gambar/video ke R2 melalui HQ. Pulang URL awam."""
+        if self.dry:
+            print(f"[DRY] upload {path} ({os.path.getsize(path)} bait)")
+            return "https://example.com/dry." + path.rsplit(".", 1)[-1]
+        with open(path, "rb") as f:
+            data = f.read()
+        req = urllib.request.Request(self.url + "/api/brain/media", data=data, method="POST", headers={"content-type": content_type, "x-brain-key": self.key, "user-agent": UA})
+        with urllib.request.urlopen(req, timeout=180) as r:
+            return json.loads(r.read().decode()).get("url")

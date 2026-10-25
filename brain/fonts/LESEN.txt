@@ -1,0 +1,4 @@
+Fon dalam folder ini dilesenkan di bawah SIL Open Font License 1.1 (OFL):
+- Fredoka (c) The Fredoka Project Authors
+- Atkinson Hyperlegible (c) Braille Institute of America
+Sumber: Google Fonts melalui pakej @fontsource. Teks penuh lesen: https://openfontlicense.org

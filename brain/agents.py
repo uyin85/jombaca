@@ -96,6 +96,37 @@ def metrics_summary(st):
 
 
 # ---------------------------------------------------------------- bandit sudut
+def attach_media(hq, st, rows):
+    """Lukis gambar/video untuk post dan lampirkan media_url. IG tanpa media dibuang."""
+    from . import media
+    ok = media.available()
+    host = re.sub(r"^https?://", "", str(st["product"].get("site") or "")).rstrip("/")
+    nv = ni = 0
+    out = []
+    for r in rows:
+        v = r.pop("_visual", None)
+        pf = r["platform"]
+        if isinstance(v, dict) and pf in ("tiktok", "reels") and v.get("type") != "none":
+            v["type"] = "video"
+        if pf == "instagram" and (not isinstance(v, dict) or v.get("type") not in ("image", "video")):
+            v = {**(v if isinstance(v, dict) else {}), "type": "image"}
+        spec = media.clean_spec(v, r.get("hook")) if ok else None
+        if spec and spec["type"] == "video" and nv >= MAX_VIDEOS:
+            spec["type"] = "image"
+        if spec and spec["type"] == "image" and ni >= MAX_IMAGES:
+            spec = None
+        url = media.make(spec, host, hq) if spec else None
+        if url:
+            r["media_url"] = url
+            nv += spec["type"] == "video"
+            ni += spec["type"] == "image"
+        if pf == "instagram" and not url:
+            continue
+        out.append(r)
+    print(f"media: {nv} video, {ni} gambar")
+    return out
+
+
 def angle_mix(st, n_slots, explore=0.3):
     angles = [a for a in st["angles"] if a.get("status") == "active"]
     if not angles:
@@ -121,13 +152,15 @@ SLOTS = {  # (jam, minit) MYT
     "telegram": [(19, 30)],
     "tiktok": [(12, 0), (20, 0)],
     "reels": [(20, 30)],
+    "instagram": [(12, 15), (19, 45)],
 }
+MAX_VIDEOS, MAX_IMAGES = 3, 6
 
 
 def plan_slots(st):
     integ = st["integrations"]
     maxd = st["settings"]["max_posts_day"]
-    want = {"threads": 4 if integ.get("threads") else 2, "facebook": 2 if integ.get("facebook") else 1, "telegram": 1 if integ.get("tg_channel") else 0, "tiktok": 2, "reels": 1}
+    want = {"threads": 4 if integ.get("threads") else 2, "facebook": 2 if integ.get("facebook") else 1, "telegram": 1 if integ.get("tg_channel") else 0, "tiktok": 2, "reels": 1, "instagram": 2 if integ.get("instagram") else 0}
     n = now_myt()
     out = []
     for pf, k in want.items():
@@ -194,12 +227,18 @@ Panduan platform:
 - threads: ≤ 450 aksara. Hook baris pertama yang buat ibu bapa berhenti scroll. Separuh post letak {{LINK}} di hujung, separuh lagi tiada pautan (nilai/soalan untuk engagement).
 - facebook: 400 hingga 900 aksara, cerita/tips + CTA dengan {{LINK}}.
 - telegram: tips ringkas + {{LINK}}.
+- instagram: kapsyen 300 hingga 800 aksara + 5 hingga 8 hashtag. JANGAN letak {{LINK}} (IG tak boleh klik pautan); tulis "pautan di bio". WAJIB ada visual.
 - tiktok / reels: SKRIP VIDEO 20 hingga 40 saat untuk dirakam/diedit oleh Azrin (rakaman skrin app + suara latar, atau klip Flow). Format body:
   HOOK (0-3s): ...\\nBABAK: 1) ... 2) ... 3) ...\\nTEKS ATAS SKRIN: ...\\nSUARA LATAR: ...\\nKAPSYEN: ... #hashtag (5 hingga 8 hashtag Malaysia relevan)\\nCTA: "Link di bio"
 
 Skema JSON:
 {{"posts": [{{"slot": nombor, "angle": "nama_sudut", "hook": "baris pertama", "body": "teks penuh"}}],
- "new_angles": [{{"name": "snake_case", "description": "huraian ringkas"}}]}}"""
+ "new_angles": [{{"name": "snake_case", "description": "huraian ringkas"}}]}}
+
+VISUAL (pilihan, letak dalam setiap post sebagai "visual"): sistem akan lukis gambar/video berjenama secara automatik.
+{{"type": "image" atau "video" atau "none", "headline": "ayat besar pada gambar, maksimum 70 aksara, Bahasa Melayu baku, boleh sama dengan hook", "sub": "ayat kecil pilihan, maksimum 100 aksara", "tiles": ["suku","kata"], "word": "sukukata"}}
+- tiles = perkataan ringkas yang dipecah ikut suku kata BETUL, huruf kecil (cth ["bo","la"] → "bola", ["ku","cing"] → "kucing", ["ma","ta"] → "mata"). Gabungan tiles MESTI sama dengan word. Jika tak pasti, beri [] dan "".
+- Panduan: instagram WAJIB image/video; threads & facebook kira-kira separuh guna image; tiktok/reels guna video; maksimum 3 video sehari."""
     out, model = ask_json(sys, user, "smart", 0.9)
     by = {j["slot"]: j for j in jobs}
     rows = []
@@ -211,7 +250,10 @@ Skema JSON:
         body = p["body"].strip()
         if pf == "threads" and len(body) > 490:
             body = body[:470].rsplit(" ", 1)[0] + (" {LINK}" if "{LINK}" in body else "")
-        rows.append({"platform": pf, "angle": re.sub(r"[^a-z0-9_]", "", (p.get("angle") or j["angle"] or "umum").lower())[:40] or "umum", "hook": p.get("hook", "")[:200], "body": body, "scheduled_at": ts(t)})
+        if pf == "instagram":
+            body = body.replace("{LINK}", "pautan di bio")
+        rows.append({"platform": pf, "angle": re.sub(r"[^a-z0-9_]", "", (p.get("angle") or j["angle"] or "umum").lower())[:40] or "umum", "hook": p.get("hook", "")[:200], "body": body, "scheduled_at": ts(t), "_visual": p.get("visual")})
+    rows = attach_media(hq, st, rows)
     if out.get("new_angles"):
         hq.write("angles", "social", rows=out["new_angles"][:3])
     r = hq.write("posts", "social", rows=rows)

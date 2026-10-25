@@ -22,6 +22,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Pasang Chromium & suara (hanya bila agen Sosial mungkin berjalan)
+        env:
+          INPUT_AGENT: ${{ inputs.agent }}
+        run: |
+          H=$(( ( $(date -u +%-H) + 8 ) % 24 ))
+          if [ "$INPUT_AGENT" = "social" ] || { [ $H -ge 7 ] && [ $H -le 9 ]; }; then
+            pip install -q playwright==1.47.0 edge-tts==7.2.0 && python -m playwright install --with-deps chromium
+          else
+            echo "Bukan waktu agen Sosial ($H:00 MYT). Langkau."
+          fi
       - name: Jalankan agen
         env:
           HQ_URL: ${{ secrets.HQ_URL }}
@@ -33,6 +43,7 @@ jobs:
           OPENAI_COMPAT_MODEL: ${{ secrets.OPENAI_COMPAT_MODEL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}
+          JB_FONTS: ${{ github.workspace }}/brain/fonts
           INPUT_AGENT: ${{ inputs.agent }}
         run: |
           if [ -z "$HQ_URL" ] || [ -z "$BRAIN_KEY" ]; then echo "HQ_URL / BRAIN_KEY belum ditetapkan dalam GitHub Secrets. Langkau."; exit 0; fi

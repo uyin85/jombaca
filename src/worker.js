@@ -237,6 +237,16 @@ async function verifyLicToken(env, tok) {
   if (lic) lic._devOk = parseJ(lic.devices, []).includes(dev);
   return lic;
 }
+async function serveR2(env, k, req, cache) {
+  const head = await env.MEDIA.head(k); if (!head) return new Response("not found", { status: 404 });
+  const rg = /bytes=(\d+)-(\d*)/.exec(req.headers.get("range") || "");
+  const size = head.size, start = rg ? Math.min(+rg[1], Math.max(0, size - 1)) : 0, end = rg && rg[2] ? Math.min(+rg[2], size - 1) : size - 1;
+  const hd = { "content-type": head.httpMetadata?.contentType || "application/octet-stream", "accept-ranges": "bytes", "cache-control": cache, "content-length": String(end - start + 1) };
+  if (req.method === "HEAD") return new Response(null, { headers: { ...hd, "content-length": String(size) } });
+  const obj = await env.MEDIA.get(k, rg ? { range: { offset: start, length: end - start + 1 } } : undefined);
+  if (rg) hd["content-range"] = `bytes ${start}-${end}/${size}`;
+  return new Response(obj.body, { status: rg ? 206 : 200, headers: hd });
+}
 async function vidUrl(env, site, objKey, mins = 120) {
   const e = now() + mins * 60e3;
   return `${site}/api/vid?k=${encodeURIComponent(objKey)}&e=${e}&s=${(await hmac(await licSecret(env), "vid|" + objKey + "|" + e)).slice(0, 20)}`;
@@ -397,12 +407,15 @@ async function fulfill(env, orderId, via) {
 /* ------------------------------------------------------------------ */
 /* Auto-post sosial                                                    */
 /* ------------------------------------------------------------------ */
-const AUTO_PLATFORMS = ["threads", "facebook", "telegram"];
+const AUTO_PLATFORMS = ["threads", "facebook", "telegram", "instagram"];
 function postText(p, site) { return String(p.body || "").replace(/\{LINK\}/g, `${site}/s/${p.id}`); }
 async function postThreads(env, p, text) {
   const base = `https://graph.threads.net/v1.0/${env.THREADS_USER_ID}`;
   const tk = env.THREADS_TOKEN;
   if (p.status === "processing" && p.ext_id) {
+    const st = await fetch(`https://graph.threads.net/v1.0/${p.ext_id}?fields=status,error_message&access_token=${encodeURIComponent(tk)}`).then(r => r.json()).catch(() => ({}));
+    if (st.status === "ERROR" || st.status === "EXPIRED") throw new Error("threads media " + JSON.stringify(st).slice(0, 200));
+    if (st.status && st.status !== "FINISHED") return { id: p.ext_id, done: false };
     const r = await fetch(`${base}/threads_publish`, { method: "POST", body: new URLSearchParams({ creation_id: p.ext_id, access_token: tk }) });
     const j = await r.json(); if (!j.id) throw new Error("threads publish " + JSON.stringify(j).slice(0, 200)); return { id: j.id, done: true };
   }
@@ -415,6 +428,34 @@ async function postThreads(env, p, text) {
   const r2 = await fetch(`${base}/threads_publish`, { method: "POST", body: new URLSearchParams({ creation_id: j.id, access_token: tk }) });
   const j2 = await r2.json(); if (!j2.id) { return { id: j.id, done: false }; }
   return { id: j2.id, done: true };
+}
+async function igResolve(env, s) {
+  const pid = s.fb_page_id, tk = s.fb_page_token; if (!pid || !tk) return null;
+  const j = await fetch(`https://graph.facebook.com/v21.0/${pid}?fields=instagram_business_account{id,username}&access_token=${encodeURIComponent(tk)}`).then(r => r.json()).catch(() => ({}));
+  const ig = j.instagram_business_account;
+  if (!ig || !ig.id) { await setSetting(env, "ig_checked", now()); return null; }
+  await setSetting(env, "ig_user_id", ig.id); await setSetting(env, "ig_username", ig.username || "");
+  return ig;
+}
+async function postInstagram(env, p, text) {
+  const G = `https://graph.facebook.com/v21.0`, tk = env.FB_PAGE_TOKEN, ig = env.IG_USER_ID;
+  const call = async (path, params, method = "POST") => {
+    const u = `${G}/${path}`, f = new URLSearchParams({ ...params, access_token: tk });
+    const r = method === "GET" ? await fetch(`${u}?${f}`) : await fetch(u, { method, body: f });
+    return r.json();
+  };
+  if (p.status === "processing" && p.ext_id) {
+    const st = await call(p.ext_id, { fields: "status_code,status" }, "GET");
+    if (st.status_code === "ERROR" || st.status_code === "EXPIRED") throw new Error("instagram media " + JSON.stringify(st).slice(0, 200));
+    if (st.status_code !== "FINISHED") return { id: p.ext_id, done: false };
+    const pub = await call(`${ig}/media_publish`, { creation_id: p.ext_id });
+    if (!pub.id) throw new Error("instagram publish " + JSON.stringify(pub).slice(0, 200)); return { id: pub.id, done: true };
+  }
+  const isVid = /\.(mp4|mov)(\?|$)/i.test(p.media_url || ""), isImg = /\.(png|jpe?g)(\?|$)/i.test(p.media_url || "");
+  if (!isVid && !isImg) throw new Error("Instagram perlukan gambar atau video");
+  const c = await call(`${ig}/media`, isVid ? { media_type: "REELS", video_url: p.media_url, caption: clip(text, 2100), share_to_feed: "true" } : { image_url: p.media_url, caption: clip(text, 2100) });
+  if (!c.id) throw new Error("instagram create " + JSON.stringify(c).slice(0, 200));
+  return { id: c.id, done: false };
 }
 async function postFacebook(env, p, text) {
   const isVid = /\.(mp4|mov|webm)(\?|$)/i.test(p.media_url || "");
@@ -433,7 +474,7 @@ async function postTelegram(env, p, text) {
 }
 function withSocial(env, s) {
   if (!s) return env;
-  return { ...env, THREADS_USER_ID: env.THREADS_USER_ID || s.threads_user_id || "", THREADS_TOKEN: env.THREADS_TOKEN || s.threads_token || "", FB_PAGE_ID: env.FB_PAGE_ID || s.fb_page_id || "", FB_PAGE_TOKEN: env.FB_PAGE_TOKEN || s.fb_page_token || "" };
+  return { ...env, THREADS_USER_ID: env.THREADS_USER_ID || s.threads_user_id || "", THREADS_TOKEN: env.THREADS_TOKEN || s.threads_token || "", FB_PAGE_ID: env.FB_PAGE_ID || s.fb_page_id || "", FB_PAGE_TOKEN: env.FB_PAGE_TOKEN || s.fb_page_token || "", IG_USER_ID: env.IG_USER_ID || s.ig_user_id || "" };
 }
 const TH_API = "https://graph.threads.net";
 async function threadsConnect(env, token) {
@@ -468,15 +509,18 @@ async function fbConnect(env, token, pageName) {
   if (!pages.length) throw new Error("Tiada Page ditemui untuk token ini. Pastikan kebenaran pages_manage_posts dan pages_read_engagement dipilih. " + (acc.error ? acc.error.message : ""));
   const pg = pages.find(p => pageName && p.name.toLowerCase().includes(String(pageName).toLowerCase())) || pages[0];
   for (const [k, v] of [["fb_page_id", pg.id], ["fb_page_token", pg.access_token], ["fb_page_name", pg.name], ["fb_long", ut !== token ? "1" : "0"]]) await setSetting(env, k, v);
-  return { ok: true, page: pg.name, pages: pages.map(p => p.name), long_lived: ut !== token };
+  const ig = await igResolve(env, { fb_page_id: pg.id, fb_page_token: pg.access_token }).catch(() => null);
+  return { ok: true, page: pg.name, pages: pages.map(p => p.name), long_lived: ut !== token, ig: ig ? ig.username : "" };
 }
 function canAuto(env, platform) {
   if (platform === "threads") return !!(env.THREADS_USER_ID && env.THREADS_TOKEN);
   if (platform === "facebook") return !!(env.FB_PAGE_ID && env.FB_PAGE_TOKEN);
+  if (platform === "instagram") return !!(env.IG_USER_ID && env.FB_PAGE_TOKEN);
   if (platform === "telegram") return !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHANNEL_ID);
   return false;
 }
 async function publishDue(env, s) {
+  if (!s.ig_user_id && s.fb_page_token && now() - +(s.ig_checked || 0) > 6 * 3600e3) { const ig = await igResolve(env, s).catch(() => null); if (ig) { s.ig_user_id = ig.id; s.ig_username = ig.username; } }
   env = withSocial(env, s);
   const site = siteUrl(env, s);
   const { results } = await env.DB.prepare("SELECT * FROM posts WHERE status IN ('scheduled','processing') AND scheduled_at<=? ORDER BY scheduled_at LIMIT 4").bind(now()).all();
@@ -487,8 +531,8 @@ async function publishDue(env, s) {
     }
     if (p.status === "processing" && now() - p.scheduled_at < 60e3) continue;
     try {
-      const text = postText(p, site);
-      const res = p.platform === "threads" ? await postThreads(env, p, text) : p.platform === "facebook" ? await postFacebook(env, p, text) : await postTelegram(env, p, text);
+      const text = p.platform === "instagram" ? String(p.body || "").replace(/\{LINK\}/g, "👉 pautan di bio") : postText(p, site);
+      const res = p.platform === "threads" ? await postThreads(env, p, text) : p.platform === "facebook" ? await postFacebook(env, p, text) : p.platform === "instagram" ? await postInstagram(env, p, text) : await postTelegram(env, p, text);
       if (res.done) { await env.DB.prepare("UPDATE posts SET status='posted', posted_at=?, ext_id=?, error=NULL WHERE id=?").bind(now(), res.id, p.id).run(); n++; }
       else await env.DB.prepare("UPDATE posts SET status='processing', ext_id=? WHERE id=?").bind(res.id, p.id).run();
     } catch (e) {
@@ -566,7 +610,7 @@ async function overview(env) {
   return { health: await health(env, s), s: { price_sen: s.price_sen, daily_sales_target: s.daily_sales_target, guarantee_days: s.guarantee_days, site_url: s.site_url }, today, d7, d28, series: ser,
     todo: { manual_posts: manual.n, hot_leads: hot.n, payouts: payouts.n, payout_amt: payouts.amt, proposals: props.n, flow_queue: flowQ.n, failed_posts: failed.n },
     plan: plan ? { day: plan.day, ...parseJ(plan.json, {}) } : null,
-    integrations: { toyyibpay: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), toyyib_sandbox: s.toyyib_sandbox === "1" && !!(env.TOYYIB_SANDBOX_SECRET && env.TOYYIB_SANDBOX_CATEGORY), email: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), threads: canAuto(withSocial(env, s), "threads"), facebook: canAuto(withSocial(env, s), "facebook"), threads_user: s.threads_username || "", fb_page: s.fb_page_name || "", tg_channel: canAuto(env, "telegram"), brain: !!env.BRAIN_KEY, r2: !!env.MEDIA } };
+    integrations: { toyyibpay: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), toyyib_sandbox: s.toyyib_sandbox === "1" && !!(env.TOYYIB_SANDBOX_SECRET && env.TOYYIB_SANDBOX_CATEGORY), email: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), threads: canAuto(withSocial(env, s), "threads"), facebook: canAuto(withSocial(env, s), "facebook"), threads_user: s.threads_username || "", fb_page: s.fb_page_name || "", instagram: !!(s.ig_user_id && s.fb_page_token), ig_user: s.ig_username || "", tg_channel: canAuto(env, "telegram"), brain: !!env.BRAIN_KEY, r2: !!env.MEDIA } };
 }
 async function brainState(env, agent) {
   const s = await settings(env);
@@ -771,20 +815,12 @@ async function handle(req, env, ctx) {
   if (p.startsWith("/m/") && env.MEDIA) {
     const mk = decodeURIComponent(p.slice(3));
     if (!mk.startsWith("v/")) return new Response("not found", { status: 404 });
-    const obj = await env.MEDIA.get(mk);
-    if (!obj) return new Response("not found", { status: 404 });
-    return new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType || "application/octet-stream", "cache-control": "public, max-age=31536000" } });
+    return serveR2(env, mk, req, "public, max-age=31536000");
   }
   if (p === "/api/vid" && env.MEDIA) {
     const k = url.searchParams.get("k") || "", e = +url.searchParams.get("e") || 0;
     if (!k.startsWith("tester/") || e < now() || url.searchParams.get("s") !== (await hmac(await licSecret(env), "vid|" + k + "|" + e)).slice(0, 20)) return new Response("Pautan tamat atau tidak sah", { status: 403 });
-    const rg = /bytes=(\d+)-(\d*)/.exec(req.headers.get("range") || "");
-    const head = await env.MEDIA.head(k); if (!head) return new Response("not found", { status: 404 });
-    const size = head.size, start = rg ? +rg[1] : 0, end = rg && rg[2] ? Math.min(+rg[2], size - 1) : size - 1;
-    const obj = await env.MEDIA.get(k, rg ? { range: { offset: start, length: end - start + 1 } } : undefined);
-    const hd = { "content-type": head.httpMetadata?.contentType || "video/mp4", "accept-ranges": "bytes", "cache-control": "private, no-store", "content-length": String(end - start + 1) };
-    if (rg) hd["content-range"] = `bytes ${start}-${end}/${size}`;
-    return new Response(obj.body, { status: rg ? 206 : 200, headers: hd });
+    return serveR2(env, k, req, "private, no-store");
   }
   if (p === "/admin") return new Response(ADMIN_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 
@@ -1092,7 +1128,7 @@ async function handle(req, env, ctx) {
       if (!j) return bad("job?", 404);
       if (d.status === "failed") { await env.DB.prepare("UPDATE flow_jobs SET status='failed', done_at=? WHERE id=?").bind(now(), j.id).run(); return J({ ok: true }); }
       await env.DB.prepare("UPDATE flow_jobs SET status='done', video_url=?, done_at=? WHERE id=?").bind(clip(d.video_url, 500), now(), j.id).run();
-      const pf = parseJ(j.platforms, ["tiktok", "reels", "threads"]); const h = mytHour();
+      const pf0 = parseJ(j.platforms, ["tiktok", "reels", "threads"]), pf = /\.mp4(\?|$)/i.test(d.video_url || "") && !pf0.includes("instagram") ? [...pf0, "instagram"] : pf0; const h = mytHour();
       const at = now() + ((h < 20 ? 20 - h : 24 - h + 20) * 3600e3);
       const st = env.DB.prepare("INSERT INTO posts(created,platform,angle,hook,body,media_url,flow_id,scheduled_at,status,agent) VALUES(?,?,?,?,?,?,?,?,?,?)");
       await env.DB.batch(pf.filter(x => PLATFORMS.includes(x)).map((x, i) => st.bind(now(), x, j.angle, j.title, j.caption || j.title, clip(d.video_url, 500), j.id, at + i * 900e3, AUTO_PLATFORMS.includes(x) ? "scheduled" : "manual_wait", "flow")));
@@ -1115,6 +1151,17 @@ async function handle(req, env, ctx) {
       const d = await body();
       const r = await env.DB.prepare("INSERT OR IGNORE INTO claims(agent,slot,ts) VALUES(?,?,?)").bind(clip(d.agent, 30), clip(d.slot, 40), now()).run();
       return J({ ok: !!r.meta.changes });
+    }
+    if (p === "/api/brain/media" && M === "POST") {
+      if (!env.MEDIA) return bad("R2 tiada", 500);
+      const ct = (req.headers.get("content-type") || "").toLowerCase();
+      const ext = { "image/png": "png", "image/jpeg": "jpg", "video/mp4": "mp4" }[ct];
+      if (!ext) return bad("jenis media tidak disokong");
+      if (+req.headers.get("content-length") > 95 * 1024 * 1024) return bad("terlalu besar");
+      const mk = `v/b/${mytDay()}/${Date.now().toString(36)}${rnd(4)}.${ext}`;
+      await env.MEDIA.put(mk, req.body, { httpMetadata: { contentType: ct } });
+      const s = await settings(env);
+      return J({ ok: true, key: mk, url: `${siteUrl(env, s, req)}/m/${mk}` });
     }
     if (p === "/api/brain/write" && M === "POST") { const d = await body(); return J(await brainWrite(env, d.kind, d, d.agent)); }
     return bad("?", 404);
@@ -1148,7 +1195,7 @@ async function handle(req, env, ctx) {
         angles: "SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC",
         prompts: "SELECT * FROM agent_prompts ORDER BY id DESC LIMIT 50",
         plans: "SELECT * FROM plans ORDER BY day DESC LIMIT 14",
-        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
+        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','ig_user_id','ig_checked','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
         app: "SELECT k, SUM(n) n FROM stats WHERE day>=date('now','-13 day') AND (k LIKE 'app:%' OR k LIKE 'src:%' OR k LIKE 'ref:%') GROUP BY k ORDER BY n DESC LIMIT 200",
       };
       if (!Q[t]) return bad("t?");
@@ -1174,7 +1221,8 @@ async function handle(req, env, ctx) {
         case "lic_reset": await run("UPDATE licenses SET devices='[]', fails=0 WHERE key=?", clip(d.key, 30)); break;
         case "threads_connect": return J(await threadsConnect(env, d.token).catch(e => ({ ok: false, error: e.message })));
         case "fb_connect": return J(await fbConnect(env, d.token, d.page).catch(e => ({ ok: false, error: e.message })));
-        case "social_disconnect": for (const k of d.p === "fb" ? ["fb_page_id", "fb_page_token", "fb_page_name"] : ["threads_token", "threads_user_id", "threads_username", "threads_token_exp"]) await run("DELETE FROM settings WHERE k=?", k); break;
+        case "ig_resolve": { const ig = await igResolve(env, s); return J(ig ? { ok: true, username: ig.username } : { ok: false, error: "Akaun IG belum dipautkan ke Page ini, atau token tiada kebenaran instagram_basic." }); }
+        case "social_disconnect": for (const k of d.p === "fb" ? ["fb_page_id", "fb_page_token", "fb_page_name", "ig_user_id", "ig_username", "ig_checked"] : ["threads_token", "threads_user_id", "threads_username", "threads_token_exp"]) await run("DELETE FROM settings WHERE k=?", k); break;
         case "tester_approve": {
           const t = await env.DB.prepare("SELECT t.*, l.email, l.name FROM tester_subs t JOIN licenses l ON l.key=t.lic WHERE t.id=?").bind(+id).first(); if (!t) return bad("?");
           await env.DB.batch([env.DB.prepare("UPDATE licenses SET expires=NULL, status='active' WHERE key=?").bind(t.lic), env.DB.prepare("UPDATE tester_subs SET status='approved', reviewed_at=? WHERE id=?").bind(now(), t.id)]);

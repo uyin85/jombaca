@@ -7,18 +7,27 @@ Secret Modal bernama "jombaca" mesti mengandungi: HQ_URL, BRAIN_KEY, GEMINI_API_
 import modal
 
 app = modal.App("jombaca-brain")
-image = modal.Image.debian_slim(python_version="3.12").add_local_python_source("brain")
+# Imej termasuk Chromium (Playwright) + ffmpeg + suara edge-tts untuk melukis kad gambar & video hook.
+image = (
+    modal.Image.debian_slim(python_version="3.12")
+    .apt_install("ffmpeg", "fonts-noto-color-emoji", "fonts-dejavu-core")
+    .pip_install("playwright==1.47.0", "edge-tts==7.2.0")
+    .run_commands("playwright install --with-deps chromium")
+    .env({"JB_FONTS": "/opt/jbfonts"})
+    .add_local_dir("brain/fonts", remote_path="/opt/jbfonts")
+    .add_local_python_source("brain")
+)
 secret = modal.Secret.from_name("jombaca")
 
 
-@app.function(image=image, secrets=[secret], schedule=modal.Cron("5 * * * *"), timeout=1200)
+@app.function(image=image, secrets=[secret], schedule=modal.Cron("5 * * * *"), timeout=1500, memory=2048)
 def hourly_tick():
     """Setiap jam pada minit ke-5: jalankan agen yang dijadualkan (waktu Malaysia)."""
     from brain.run import tick
     tick()
 
 
-@app.function(image=image, secrets=[secret], timeout=900)
+@app.function(image=image, secrets=[secret], timeout=1500, memory=2048)
 def run_agent(name: str):
     """Jalankan satu agen secara manual: modal run brain/modal_app.py::run_agent --name social"""
     from brain.hq import HQ
