@@ -814,9 +814,9 @@
     let raw = true;
     try { const r = PS.get("raw_ms"); if (r !== null) raw = r === "1"; } catch (e) {}
 
-    /* Sebutan vokal tunggal. Jangan guna "ii"/"iii": enjin suara Melayu membacanya sebagai nombor Roman (II = "dua").
-       Suara Melayu/Indonesia sebut huruf "i" dengan betul; suara Inggeris (sandaran) perlukan "ee" supaya tak jadi "ai". */
-    const TV_MS = { a: "a", i: "i", u: "u", e: "e", o: "o" };
+    /* Sebutan vokal tunggal (diuji pada telefon): aa, uu, eh, oo betul. Huruf tunggal dibaca macam nama huruf
+       Inggeris ("a" jadi "ei"), dan "ii" dibaca nombor Roman II = "dua". Jadi "i" guna "ih" (sama seperti "eh"). */
+    const TV_MS = { a: "aa", i: "ih", u: "uu", e: "eh", o: "oo" };
     const TV_EN = { a: "ah", i: "ee", u: "oo", e: "eh", o: "oh" };
     function malayVoice() { const v = getMalayVoice(); return !!(v && /^(ms|id)/i.test(v.lang)); }
     function T(p) {

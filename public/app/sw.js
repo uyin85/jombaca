@@ -1,5 +1,5 @@
 /* Jom Baca! service worker: boleh guna offline. Naikkan VERSI bila app dikemas kini. */
-const VERSI = "jb-v2.3.2";
+const VERSI = "jb-v2.3.3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./icon-180.png", "./icon-512.png",
   "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"];
 self.addEventListener("install", e => {
