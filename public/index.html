@@ -310,6 +310,7 @@
       $("basePrice").innerHTML = "<s>" + d.base_label + "</s>";
       $("couponOk").textContent = "Kupon " + d.coupon.code + " digunakan: jimat " + d.coupon.save_label + (d.coupon.expires ? ", sah sehingga " + new Date(d.coupon.expires).toLocaleString("ms-MY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
     }
+    if (d.sandbox) { const sb = document.createElement("div"); sb.className = "promo"; sb.style.cssText = "display:block;background:#c0223f"; sb.textContent = "🧪 MOD UJIAN PEMBAYARAN (sandbox). Tiada wang sebenar ditolak."; document.body.prepend(sb); }
     if (d.promo) { $("promo").innerHTML = "🎉 <b>" + d.promo.label.replace(/[<>]/g, "") + "</b> sehingga " + new Date(d.promo.until).toLocaleString("ms-MY", { weekday: "long", hour: "2-digit", minute: "2-digit" }); $("promo").style.display = "block"; }
     if (d.guarantee_days > 0) { $("guar").textContent = "🛡️ Jaminan " + d.guarantee_days + " hari: jika Jom Baca! tidak sesuai untuk anak anda, hubungi kami dalam " + d.guarantee_days + " hari untuk bayaran balik penuh."; $("guar").style.display = "block"; }
     if (d.buyers) $("trust").textContent = d.buyers + " keluarga sudah guna Jom Baca Pro. Bayar sekali, guna selamanya. Suara anak tidak dirakam.";

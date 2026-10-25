@@ -37,7 +37,8 @@ TOYYIB_SANDBOX = "0"
 #  ADMIN_KEY          kata laluan papan admin /admin
 #  BRAIN_KEY          kunci API untuk agen AI (Modal / GitHub Actions / Hermes)
 #  FLOW_KEY           (pilihan) kunci untuk sambungan Google Flow
-#  TOYYIB_SECRET, TOYYIB_CATEGORY            ToyyibPay
+#  TOYYIB_SECRET, TOYYIB_CATEGORY            ToyyibPay (live)
+#  TOYYIB_SANDBOX_SECRET, TOYYIB_SANDBOX_CATEGORY   ToyyibPay sandbox (ujian). Hidupkan di /admin → Tetapan → toyyib_sandbox = 1
 #  BREVO_API_KEY  atau  RESEND_API_KEY       emel
 #  TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID      notifikasi kepada anda
 #  TELEGRAM_CHANNEL_ID                       (pilihan) auto-post ke saluran

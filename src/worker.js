@@ -72,6 +72,7 @@ const DEFAULTS = {
   wa_number: "",                // no WhatsApp sokongan, cth 60123456789
   support_email: "",
   email_from: "",               // cth: Jom Baca <hello@domainanda.com>
+  toyyib_sandbox: "0",          // 1 = guna ToyyibPay sandbox (dev.toyyibpay.com) untuk ujian
   manual_pay_text: "Pembayaran dalam talian sedang disediakan. Kami akan hubungi anda melalui WhatsApp untuk melengkapkan pembelian.",
   promo: "",                    // JSON {code,label,until}
   aff_swipe: "[]",
@@ -305,25 +306,31 @@ async function variantBump(env, vids, field) {
 /* ------------------------------------------------------------------ */
 /* Pembayaran (ToyyibPay) & penghantaran lesen                         */
 /* ------------------------------------------------------------------ */
-const toyHost = env => env.TOYYIB_SANDBOX === "1" ? "https://dev.toyyibpay.com" : "https://toyyibpay.com";
-async function toyCreateBill(env, o, site) {
+const TOY_LIVE = "https://toyyibpay.com", TOY_DEV = "https://dev.toyyibpay.com";
+function toyCfg(env, s, forceSandbox) {
+  const sb = forceSandbox != null ? forceSandbox : (s && s.toyyib_sandbox === "1") || env.TOYYIB_SANDBOX === "1";
+  return sb ? { host: TOY_DEV, secret: env.TOYYIB_SANDBOX_SECRET, cat: env.TOYYIB_SANDBOX_CATEGORY, sandbox: true } : { host: TOY_LIVE, secret: env.TOYYIB_SECRET, cat: env.TOYYIB_CATEGORY, sandbox: false };
+}
+const toyCfgForOrder = (env, o) => toyCfg(env, null, String(o.pay_url || "").startsWith(TOY_DEV));
+async function toyCreateBill(tc, o, site) {
   const f = new URLSearchParams({
-    userSecretKey: env.TOYYIB_SECRET, categoryCode: env.TOYYIB_CATEGORY,
+    userSecretKey: tc.secret, categoryCode: tc.cat,
     billName: "Jom Baca Pro", billDescription: "Lesen Jom Baca Pro seumur hidup " + o.id,
     billPriceSetting: "1", billPayorInfo: "1", billAmount: String(o.amount),
     billReturnUrl: `${site}/terima-kasih?o=${o.id}&t=${o.tok}`, billCallbackUrl: `${site}/api/pay/toyyib`,
     billExternalReferenceNo: o.id, billTo: clip(o.name || "Pelanggan", 60), billEmail: o.email, billPhone: o.phone || "0100000000",
     billExpiryDays: "3", billPaymentChannel: "2",
   });
-  const r = await fetch(toyHost(env) + "/index.php/api/createBill", { method: "POST", body: f });
+  const r = await fetch(tc.host + "/index.php/api/createBill", { method: "POST", body: f });
   const t = await r.text();
   const j = parseJ(t, null);
   if (Array.isArray(j) && j[0] && j[0].BillCode) return j[0].BillCode;
   throw new Error("ToyyibPay: " + t.slice(0, 200));
 }
-async function toyPaid(env, billcode, amount) {
-  const f = new URLSearchParams({ billCode: billcode, userSecretKey: env.TOYYIB_SECRET });
-  const r = await fetch(toyHost(env) + "/index.php/api/getBillTransactions", { method: "POST", body: f });
+async function toyPaid(tc, billcode, amount) {
+  if (!tc.secret) return false;
+  const f = new URLSearchParams({ billCode: billcode, userSecretKey: tc.secret });
+  const r = await fetch(tc.host + "/index.php/api/getBillTransactions", { method: "POST", body: f });
   const j = parseJ(await r.text(), []);
   return Array.isArray(j) && j.some(x => String(x.billpaymentStatus) === "1" && Math.round(parseFloat(x.billpaymentAmount) * 100) >= amount);
 }
@@ -495,7 +502,7 @@ async function overview(env) {
   return { s: { price_sen: s.price_sen, daily_sales_target: s.daily_sales_target, guarantee_days: s.guarantee_days, site_url: s.site_url }, today, d7, d28, series: ser,
     todo: { manual_posts: manual.n, hot_leads: hot.n, payouts: payouts.n, payout_amt: payouts.amt, proposals: props.n, flow_queue: flowQ.n, failed_posts: failed.n },
     plan: plan ? { day: plan.day, ...parseJ(plan.json, {}) } : null,
-    integrations: { toyyibpay: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), email: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), threads: canAuto(env, "threads"), facebook: canAuto(env, "facebook"), tg_channel: canAuto(env, "telegram"), brain: !!env.BRAIN_KEY, r2: !!env.MEDIA } };
+    integrations: { toyyibpay: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), toyyib_sandbox: s.toyyib_sandbox === "1" && !!(env.TOYYIB_SANDBOX_SECRET && env.TOYYIB_SANDBOX_CATEGORY), email: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), threads: canAuto(env, "threads"), facebook: canAuto(env, "facebook"), tg_channel: canAuto(env, "telegram"), brain: !!env.BRAIN_KEY, r2: !!env.MEDIA } };
 }
 async function brainState(env, agent) {
   const s = await settings(env);
@@ -711,7 +718,7 @@ async function handle(req, env, ctx) {
     const promo = parseJ(s.promo, null);
     if (!code && promo && promo.until > now()) code = promo.code;
     const pr = await priceFor(env, s, code);
-    const out = { price_sen: pr.amount, price_label: rm(pr.amount), base_label: rm(pr.base), coupon: pr.coupon, promo: promo && promo.until > now() && pr.coupon && pr.coupon.code === promo.code ? promo : null, guarantee_days: +s.guarantee_days, wa: s.wa_number };
+    const out = { price_sen: pr.amount, price_label: rm(pr.amount), base_label: rm(pr.base), coupon: pr.coupon, promo: promo && promo.until > now() && pr.coupon && pr.coupon.code === promo.code ? promo : null, guarantee_days: +s.guarantee_days, wa: s.wa_number, sandbox: s.toyyib_sandbox === "1" };
     if (url.searchParams.get("lite")) return J(out);
     const { results: vs } = await env.DB.prepare("SELECT id,slot,text,views,leads,conv FROM variants WHERE status='live'").all();
     out.v = pickVariants(vs);
@@ -779,16 +786,17 @@ async function handle(req, env, ctx) {
     await bump(env, pairs);
     if (lead && lead.isNew) { const ops = await variantBump(env, d.vids, "leads"); if (ops.length) await env.DB.batch(ops); }
     let payUrl;
-    if (env.TOYYIB_SECRET && env.TOYYIB_CATEGORY) {
-      try { const code = await toyCreateBill(env, o, site); payUrl = toyHost(env) + "/" + code; await env.DB.prepare("UPDATE orders SET billcode=?, pay_url=? WHERE id=?").bind(code, payUrl, o.id).run(); }
-      catch (e) { await tg(env, "⚠️ ToyyibPay gagal: " + e.message); return bad("Gerbang pembayaran sedang bermasalah. Cuba sebentar lagi atau hubungi kami di WhatsApp.", 502); }
+    const tc = toyCfg(env, s);
+    if (tc.secret && tc.cat) {
+      try { const code = await toyCreateBill(tc, o, site); payUrl = tc.host + "/" + code; await env.DB.prepare("UPDATE orders SET billcode=?, pay_url=? WHERE id=?").bind(code, payUrl, o.id).run(); }
+      catch (e) { await tg(env, "⚠️ ToyyibPay" + (tc.sandbox ? " (sandbox)" : "") + " gagal: " + e.message); return bad("Gerbang pembayaran sedang bermasalah. Cuba sebentar lagi atau hubungi kami di WhatsApp.", 502); }
     } else {
       payUrl = `${site}/terima-kasih?o=${o.id}&t=${o.tok}`;
       ctx.waitUntil(tg(env, `🧾 Pesanan manual (ToyyibPay belum disetup): ${o.name} · ${o.phone} · ${rm(o.amount)} · ${o.id}`));
     }
     await env.DB.prepare("INSERT INTO emails(created,lead_id,to_email,subject,html,send_at,kind) VALUES(?,?,?,?,?,?,?)").bind(now(), lead ? lead.id : null, email, "Pembayaran Jom Baca Pro anda belum selesai",
       emailWrap(s, `<p>Hai ${name.split(" ")[0]},</p><p>Kami nampak anda hampir mendapatkan <b>Jom Baca Pro</b>, tetapi pembayaran belum selesai.</p><p><a href="${payUrl}">👉 Sambung pembayaran (${rm(o.amount)})</a></p><p>Ada masalah? Balas emel ini${s.wa_number ? ` atau WhatsApp kami: https://wa.me/${s.wa_number}` : ""}.</p>`, ""), now() + 3600e3, "abandon:" + o.id).run();
-    return J({ ok: true, url: payUrl, order: o.id, manual: !(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY) });
+    return J({ ok: true, url: payUrl, order: o.id, manual: !(tc.secret && tc.cat), sandbox: tc.sandbox });
   }
   if (p === "/api/pay/toyyib" && M === "POST") {
     const f = await req.formData().catch(() => null);
@@ -796,14 +804,15 @@ async function handle(req, env, ctx) {
     const orderId = String(f.get("order_id") || ""), status = String(f.get("status") || ""), billcode = String(f.get("billcode") || "");
     const o = await env.DB.prepare("SELECT * FROM orders WHERE id=?").bind(orderId).first();
     if (!o || o.billcode !== billcode) return new Response("unknown", { status: 404 });
-    if (status === "1" && await toyPaid(env, billcode, o.amount)) await fulfill(env, o.id, "toyyibpay");
+    const tc = toyCfgForOrder(env, o);
+    if (status === "1" && await toyPaid(tc, billcode, o.amount)) await fulfill(env, o.id, tc.sandbox ? "toyyibpay-sandbox" : "toyyibpay");
     return new Response("OK");
   }
   if (p === "/api/order" && M === "GET") {
     const o = await env.DB.prepare("SELECT * FROM orders WHERE id=? AND tok=?").bind(url.searchParams.get("o") || "", url.searchParams.get("t") || "").first();
     if (!o) return bad("Pesanan tidak dijumpai", 404);
     let cur = o;
-    if (o.status !== "paid" && o.billcode && env.TOYYIB_SECRET && await toyPaid(env, o.billcode, o.amount).catch(() => false)) cur = await fulfill(env, o.id, "toyyibpay-return");
+    if (o.status !== "paid" && o.billcode && await toyPaid(toyCfgForOrder(env, o), o.billcode, o.amount).catch(() => false)) cur = await fulfill(env, o.id, String(o.pay_url || "").startsWith(TOY_DEV) ? "toyyibpay-sandbox-return" : "toyyibpay-return");
     const s = await settings(env);
     const out = { status: cur.status, name: cur.name, amount: rm(cur.amount), pay_url: cur.status === "paid" ? null : cur.pay_url, manual_text: !o.billcode ? s.manual_pay_text : null, wa: s.wa_number };
     if (cur.status === "paid") {
