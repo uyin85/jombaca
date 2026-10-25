@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maklum balas: Jom Baca!</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style>
+  main { padding: 26px 0 60px; }
+  .stars { display: flex; gap: 6px; margin-top: 4px; }
+  .stars button { font-size: 36px; background: none; border: 0; cursor: pointer; filter: grayscale(1) opacity(.35); padding: 0 2px; }
+  .stars button.on { filter: none; }
+  textarea.in { min-height: 120px; resize: vertical; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; margin-top: 14px; }
+  .consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+  .panel { margin-top: 18px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a href="/" class="small">← Jom Baca!</a>
+  <h1 style="margin-top:12px">Ceritakan pengalaman anda</h1>
+  <p class="muted" style="margin-top:10px">Maklum balas jujur, yang baik dan yang kurang baik, membantu kami memperbaiki Jom Baca untuk semua anak.</p>
+  <div class="panel" id="box">
+    <form id="f" novalidate>
+      <label class="f">Penilaian keseluruhan</label>
+      <div class="stars" id="stars" role="radiogroup" aria-label="Penilaian"></div>
+      <label class="f" for="w">Apa yang paling membantu anak anda?</label>
+      <textarea class="in" id="w" placeholder="Contoh: anak saya dah boleh baca perkataan dua suku kata selepas 5 hari. Dia suka kumpul bintang…"></textarea>
+      <label class="f" for="i">Apa yang perlu kami perbaiki? (pilihan)</label>
+      <textarea class="in" id="i" style="min-height:80px" placeholder="Contoh: suara kurang jelas di telefon saya, mahu lebih banyak cerita…"></textarea>
+      <label class="f" for="fl">Keputusan ujian kelancaran 1 minit (pilihan)</label>
+      <input class="in" id="fl" inputmode="numeric" placeholder="Contoh: 12 perkataan seminit">
+      <label class="f" for="n">Nama untuk dipaparkan</label>
+      <input class="in" id="n" placeholder="Contoh: Puan Aina, ibu kepada anak 5 tahun, Kajang">
+      <label class="consent"><input type="checkbox" id="c"><span>Saya izinkan maklum balas ini dipaparkan sebagai testimoni di laman Jom Baca (tanpa nombor telefon atau emel).</span></label>
+      <div class="hp" aria-hidden="true"><input id="hp" tabindex="-1" autocomplete="off"></div>
+      <div class="err" id="err" role="alert"></div>
+      <button class="btn" style="width:100%" id="b">Hantar maklum balas</button>
+    </form>
+  </div>
+</main>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), key = new URLSearchParams(location.search).get("k") || "";
+  let rating = 5;
+  const paint = () => { $("stars").innerHTML = [1, 2, 3, 4, 5].map(i => `<button type="button" role="radio" aria-checked="${i === rating}" aria-label="${i} bintang" class="${i <= rating ? "on" : ""}" data-r="${i}">⭐</button>`).join(""); };
+  paint(); $("stars").onclick = e => { const b = e.target.closest("[data-r]"); if (b) { rating = +b.dataset.r; paint(); } };
+  $("f").onsubmit = async e => {
+    e.preventDefault(); $("err").textContent = "";
+    const good = $("w").value.trim(), imp = $("i").value.trim(), fl = $("fl").value.trim();
+    if (good.length < 10) { $("err").textContent = "Sila tulis sekurang-kurangnya satu ayat tentang pengalaman anda."; return; }
+    const text = good + (imp ? "\n\nPerlu diperbaiki: " + imp : "") + (fl ? "\n\nUjian kelancaran: " + fl : "");
+    $("b").disabled = true;
+    try {
+      const r = await (await fetch("/api/testimonial", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, name: $("n").value.trim() || "Ibu bapa", rating, consent: $("c").checked, key, hp: $("hp").value }) })).json();
+      if (!r.ok) throw new Error(r.error || "Ralat");
+      $("box").innerHTML = `<div style="text-align:center"><div style="font-size:56px">💚</div><h2>Terima kasih!</h2><p class="muted" style="margin-top:8px">Maklum balas anda sudah diterima. Kami baca setiap satu.</p><a class="btn" href="/app/" style="margin-top:14px">Kembali ke Jom Baca</a></div>`;
+    } catch (err) { $("err").textContent = err.message; $("b").disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>

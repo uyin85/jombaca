@@ -34,7 +34,7 @@
         <p class="muted" style="margin-top:10px">Pembelian Jom Baca Pro berjaya. Ini kod lesen anda (juga dihantar ke emel):</p>
         <div class="key" id="k">${esc(d.license)}</div>
         <a class="btn" style="width:100%" href="${esc(d.app_url)}">Buka Jom Baca Pro sekarang</a>
-        <p class="small muted" style="margin-top:14px">Pada telefon: selepas app dibuka, tekan menu pelayar dan pilih <b>Tambah ke Skrin Utama</b> supaya mudah dibuka anak. Di peranti lain, buka ${esc(site)}/app/ → 👑 → "Sudah beli?" dan masukkan kod di atas (sehingga 5 peranti).</p>
+        <p class="small muted" style="margin-top:14px">Pada telefon: selepas app dibuka, tekan menu pelayar dan pilih <b>Tambah ke Skrin Utama</b> supaya mudah dibuka anak. Di peranti lain, buka ${esc(site)}/app/ → 👑 → "Sudah beli?" dan masukkan kod di atas (sehingga 3 peranti).</p>
         ${link ? `<div class="panel" style="background:var(--sky);margin-top:22px"><h3>💸 Bonus: anda kini affiliate</h3><p class="muted" style="margin-top:6px">Kongsi pautan ini. Setiap kawan yang beli, anda dapat komisen.</p><div class="key" style="font-size:16px;letter-spacing:0;background:#fff">${esc(link)}</div>
         <div class="row"><a class="btn" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent("Anak saya belajar membaca guna Jom Baca! 10 minit sehari, suku kata demi suku kata. Cuba percuma: " + link)}">Kongsi di WhatsApp</a><a class="btn alt" href="/affiliate?code=${encodeURIComponent(d.aff)}&k=${encodeURIComponent(d.aff_k || "")}">Papan affiliate</a></div></div>` : ""}`;
       return;

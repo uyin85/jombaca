@@ -52,7 +52,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS claims(agent TEXT, slot TEXT, ts INTEGER, PRIMARY KEY(agent, slot))`,
   `CREATE TABLE IF NOT EXISTS proposals(id INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER, agent TEXT, kind TEXT, title TEXT, body TEXT, status TEXT DEFAULT 'open')`,
 ];
-const SCHEMA_V = "3";
+const SCHEMA_V = "4";
 
 const DEFAULTS = {
   brand: "Jom Baca!",
@@ -76,6 +76,9 @@ const DEFAULTS = {
   manual_pay_text: "Pembayaran dalam talian sedang disediakan. Kami akan hubungi anda melalui WhatsApp untuk melengkapkan pembelian.",
   promo: "",                    // JSON {code,label,until}
   aff_swipe: "[]",
+  max_devices: "3",            // had peranti setiap lesen
+  tester_slots: "10",           // bilangan tempat Program Pengguji Awal
+  tester_open: "1",             // 1 = pendaftaran pengguji dibuka
   nurture_tpl: "",
 };
 
@@ -117,7 +120,7 @@ async function migrate(env) {
   const v = await env.DB.prepare("SELECT v FROM settings WHERE k='schema_v'").first().catch(() => null);
   if (!v || v.v !== SCHEMA_V) {
     await env.DB.batch(SCHEMA.map(s => env.DB.prepare(s)));
-    const add = [["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"]];
+    const add = [["licenses", "kind TEXT DEFAULT 'paid'"], ["licenses", "fails INTEGER DEFAULT 0"], ["licenses", "phone TEXT"], ["testimonials", "rating INTEGER"], ["testimonials", "kind TEXT"], ["testimonials", "lic TEXT"], ["testimonials", "consent INTEGER DEFAULT 0"], ["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"]];
     for (const [t, c] of add) await env.DB.prepare(`ALTER TABLE ${t} ADD COLUMN ${c}`).run().catch(() => {});
     await env.DB.prepare("INSERT OR REPLACE INTO settings(k,v) VALUES('schema_v',?)").bind(SCHEMA_V).run();
     const sec = await env.DB.prepare("SELECT v FROM settings WHERE k='lic_secret'").first();
@@ -225,8 +228,12 @@ async function verifyLicToken(env, tok) {
   const [key, dev, sig] = String(tok || "").split(".");
   if (!key || !dev || !sig) return null;
   if (sig !== await hmac(await licSecret(env), key + "|" + dev)) return null;
-  return env.DB.prepare("SELECT * FROM licenses WHERE key=?").bind(key).first();
+  const lic = await env.DB.prepare("SELECT * FROM licenses WHERE key=?").bind(key).first();
+  if (lic) lic._devOk = parseJ(lic.devices, []).includes(dev);
+  return lic;
 }
+async function resetSig(env, key) { return (await hmac(await licSecret(env), "reset|" + key)).slice(0, 16); }
+function maskKey(k) { return String(k || "").slice(0, 8) + "••••"; }
 async function contentPack(env) {
   const { results } = await env.DB.prepare("SELECT id,title,en,icon,items FROM packs WHERE status='live' ORDER BY created").all();
   return { v: 1, levels: CORE.levels, packs: results.map(p => ({ id: p.id, title: p.title, en: p.en, icon: p.icon, items: parseJ(p.items, []) })) };
@@ -352,7 +359,7 @@ async function fulfill(env, orderId, via) {
   const upd = await env.DB.prepare("UPDATE orders SET status='paid', paid_at=?, license=?, note=? WHERE id=? AND status!='paid'").bind(now(), key, clip(via, 40), o.id).run();
   if (!upd.meta.changes) return o;
   const isTest = /sandbox/.test(via || "");  // jualan ujian: jangan masuk statistik, komisen atau pembelajaran agen
-  const ops = [env.DB.prepare("INSERT INTO licenses(key,order_id,email,name,created) VALUES(?,?,?,?,?)").bind(key, o.id, o.email, o.name, now())];
+  const ops = [env.DB.prepare("INSERT INTO licenses(key,order_id,email,name,created,kind,phone) VALUES(?,?,?,?,?,?,?)").bind(key, o.id, o.email, o.name, now(), isTest ? "test" : "paid", o.phone || null)];
   let aff = await env.DB.prepare("SELECT code, token FROM affiliates WHERE email=?").bind(o.email).first();
   if (!aff) aff = await newAffiliate(env, { name: o.name, email: o.email, phone: o.phone }, true);
   if (!isTest && o.ref && o.ref !== aff.code) {
@@ -371,7 +378,7 @@ async function fulfill(env, orderId, via) {
   if (!isTest && o.ref) pairs.push(["ref:" + o.ref + ":sale"]);
   await bump(env, pairs);
   const app = `${site}/app/?lesen=${key}`;
-  const html = emailWrap(s, `<p>Hai ${o.name || ""},</p><p>Terima kasih! Pembelian <b>Jom Baca Pro</b> anda berjaya. 🎉</p><p>Kod lesen anda:</p><p style="font-size:22px;font-weight:bold;letter-spacing:2px">${key}</p><p><a href="${app}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">👉 Buka Jom Baca Pro</a></p><p>Lesen boleh digunakan pada 5 peranti. Pada peranti lain, buka ${site}/app/ → 👑 → "Sudah beli?" dan masukkan kod di atas.</p><p><b>Bonus:</b> anda kini affiliate Jom Baca. Kongsi pautan ini dan dapat komisen setiap jualan:<br>${site}/r/${aff.code}</p><p>Papan affiliate anda: ${site}/affiliate?code=${aff.code}&k=${aff.token}</p>`);
+  const html = emailWrap(s, `<p>Hai ${o.name || ""},</p><p>Terima kasih! Pembelian <b>Jom Baca Pro</b> anda berjaya. 🎉</p><p>Kod lesen anda:</p><p style="font-size:22px;font-weight:bold;letter-spacing:2px">${key}</p><p><a href="${app}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">👉 Buka Jom Baca Pro</a></p><p>Lesen boleh digunakan pada 3 peranti. Jika tukar telefon, gunakan pautan reset dalam emel notifikasi peranti. Pada peranti lain, buka ${site}/app/ → 👑 → "Sudah beli?" dan masukkan kod di atas.</p><p><b>Bonus:</b> anda kini affiliate Jom Baca. Kongsi pautan ini dan dapat komisen setiap jualan:<br>${site}/r/${aff.code}</p><p>Papan affiliate anda: ${site}/affiliate?code=${aff.code}&k=${aff.token}</p>`);
   await sendEmail(env, s, o.email, (isTest ? "[UJIAN] " : "") + "Lesen Jom Baca Pro anda: " + key, html).catch(e => env.DB.prepare("INSERT INTO emails(created,to_email,subject,html,send_at,status,kind,error) VALUES(?,?,?,?,?,?,?,?)").bind(now(), o.email, "Lesen Jom Baca Pro anda: " + key, html, now() + 600e3, "queued", "license", String(e.message || e)).run());
   await tg(env, (isTest ? "🧪 <b>Jualan UJIAN (sandbox)</b>, tidak dikira dalam statistik.\n" : "") + `💰 <b>Jualan!</b> ${rm(o.amount)} · ${o.name || "-"}\nSumber: ${o.src || "-"} · Ref: ${o.ref || "-"} · Kupon: ${o.coupon || "-"}`);
   return { ...o, status: "paid", license: key };
@@ -541,7 +548,7 @@ async function brainState(env, agent) {
   return {
     now_myt: new Date(now() + MYT).toISOString().replace("Z", "+08:00"), agent,
     product: { name: s.brand, price: rm(+s.price_sen), floor: rm(+s.floor_sen), aff_rate_pct: +s.aff_rate_pct, guarantee_days: +s.guarantee_days, site: siteUrl(env, s), levels: CORE.n_levels || 40, items: CORE.n_items || 360, free_levels: CORE.free,
-      features: [`${CORE.n_levels || 40} tahap dalam 7 bahagian, ikut pola suku kata yang digunakan di sekolah Malaysia: huruf (vokal, huruf kecil & besar, huruf keliru b/d/p) → suku kata KV → perkataan terbuka → KVK → KVKK → vokal berganding, diftong, ng/ny/kh/sy, konsonan bergabung → kata kerja & imbuhan → ayat, cerita & soalan pemahaman`, "Pengecaman suara: anak sebut, app dengar, 3 kali betul = bintang & gambar 3D", "Mod Ketik Jawapan untuk anak belum bertutur / sebutan belum jelas", "Permainan bunyi (kesedaran fonologi): buang/tukar/gabung suku kata, kira suku kata", "Ujian penempatan 2 minit & ujian kelancaran 1 minit (perkataan betul seminit) dengan graf kemajuan", "Kuiz dengar & pilih setiap tahap", "Misi Harian 10 minit + streak", "Ruang Ibu Bapa: laporan, minit, ketepatan, item lemah", "Pusat Cetak: kad imbas, lembaran kerja, sijil, laporan, pelan 30 hari", "5 profil anak, 5 peranti, offline (PWA)", "Onboarding pilih mod: Biasa / Autisme / Disleksia / Kedua-dua / Belum bertutur", "Mod Tenang & pemasa rehat (autisme), fon Atkinson/Lexend, latar krim, suara perlahan (disleksia)", "Pek cerita baharu setiap minggu", "Telur menetas → koleksi haiwan & maskot"] },
+      features: [`${CORE.n_levels || 40} tahap dalam 7 bahagian, ikut pola suku kata yang digunakan di sekolah Malaysia: huruf (vokal, huruf kecil & besar, huruf keliru b/d/p) → suku kata KV → perkataan terbuka → KVK → KVKK → vokal berganding, diftong, ng/ny/kh/sy, konsonan bergabung → kata kerja & imbuhan → ayat, cerita & soalan pemahaman`, "Pengecaman suara: anak sebut, app dengar, 3 kali betul = bintang & gambar 3D", "Mod Ketik Jawapan untuk anak belum bertutur / sebutan belum jelas", "Permainan bunyi (kesedaran fonologi): buang/tukar/gabung suku kata, kira suku kata", "Ujian penempatan 2 minit & ujian kelancaran 1 minit (perkataan betul seminit) dengan graf kemajuan", "Kuiz dengar & pilih setiap tahap", "Misi Harian 10 minit + streak", "Ruang Ibu Bapa: laporan, minit, ketepatan, item lemah", "Pusat Cetak: kad imbas, lembaran kerja, sijil, laporan, pelan 30 hari", "5 profil anak, 3 peranti, offline (PWA)", "Onboarding pilih mod: Biasa / Autisme / Disleksia / Kedua-dua / Belum bertutur", "Mod Tenang & pemasa rehat (autisme), fon Atkinson/Lexend, latar krim, suara perlahan (disleksia)", "Pek cerita baharu setiap minggu", "Telur menetas → koleksi haiwan & maskot"] },
     settings: { auto_post: s.auto_post, auto_variants: s.auto_variants, auto_publish_packs: s.auto_publish_packs, auto_coupons: s.auto_coupons, max_posts_day: +s.max_posts_day, daily_sales_target: +s.daily_sales_target, promo: parseJ(s.promo, null), flow_cost: +s.flow_cost },
     metrics: { today: ov.today, last7: ov.d7, last28: ov.d28, daily: ov.series.slice(-14) }, todo: ov.todo, integrations: ov.integrations,
     posts, angles, variants: probBest(vars), leads: { new_24h: leadsNew.n, hot: leadsHot }, affiliates: affTop, coupons,
@@ -672,7 +679,7 @@ async function brainWrite(env, kind, d, agent) {
 /* ------------------------------------------------------------------ */
 /* Router HTTP                                                          */
 /* ------------------------------------------------------------------ */
-const APP_EVENTS = new Set(["open", "lvl_start", "lvl_done", "paywall", "buy_click", "act_ok", "act_fail", "mission_start", "mission_done", "print", "parent_open", "profile_add", "cert", "onboard", "placement_start", "placement", "fluency_start", "fluency", "rest"]);
+const APP_EVENTS = new Set(["open", "lvl_start", "lvl_done", "paywall", "buy_click", "act_ok", "act_fail", "mission_start", "mission_done", "print", "parent_open", "profile_add", "cert", "onboard", "placement_start", "placement", "fluency_start", "fluency", "rest", "lic_removed", "reset_req"]);
 const LP_EVENTS = new Set(["cta_click", "form_open", "scroll50", "demo_click", "lead_form_open", "wa_click", "faq_open", "demo_play"]);
 
 async function handle(req, env, ctx) {
@@ -725,7 +732,7 @@ async function handle(req, env, ctx) {
     if (url.searchParams.get("lite")) return J(out);
     const { results: vs } = await env.DB.prepare("SELECT id,slot,text,views,leads,conv FROM variants WHERE status='live'").all();
     out.v = pickVariants(vs);
-    const { results: ts } = await env.DB.prepare("SELECT name,text FROM testimonials WHERE status='approved' ORDER BY id DESC LIMIT 6").all();
+    const { results: ts } = await env.DB.prepare("SELECT name,text,rating,kind FROM testimonials WHERE status='approved' ORDER BY id DESC LIMIT 6").all();
     out.testimonials = ts;
     const paid = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status='paid' AND COALESCE(note,'') NOT LIKE '%sandbox%'").first();
     out.buyers = paid.n >= 20 ? paid.n : null;
@@ -830,18 +837,47 @@ async function handle(req, env, ctx) {
     const lic = await env.DB.prepare("SELECT * FROM licenses WHERE key=?").bind(key).first();
     if (!lic) return J({ ok: false, error: "Kod lesen tidak dijumpai. Semak semula (contoh: JB-ABCD-EFGH-JKLM)." });
     if (lic.status !== "active") return J({ ok: false, error: "Lesen ini tidak aktif. Hubungi kami." });
-    const devs = parseJ(lic.devices, []);
+    const devs = parseJ(lic.devices, []), s = await settings(env), maxD = Math.max(1, +s.max_devices || 3), site = siteUrl(env, s, req);
     if (!devs.includes(dev)) {
-      if (devs.length >= 5) return J({ ok: false, error: "Had 5 peranti telah dicapai. Hubungi kami untuk set semula." });
+      if (devs.length >= maxD) {
+        const fails = (lic.fails || 0) + 1;
+        await env.DB.prepare("UPDATE licenses SET fails=? WHERE key=?").bind(fails, key).run();
+        if (fails === 3 || fails % 10 === 0) ctx.waitUntil(tg(env, `⚠️ Lesen ${maskKey(key)} (${lic.name || "-"}) cuba diaktifkan pada peranti ke-${devs.length + 1} sebanyak ${fails} kali. Mungkin dikongsi. Semak di /admin → Jualan → Lesen.`));
+        return J({ ok: false, limit: true, error: `Lesen ini sudah digunakan pada ${maxD} peranti (had maksimum). Pemilik lesen boleh keluarkan peranti lama melalui pautan reset yang dihantar ke emel pembelian.` });
+      }
       devs.push(dev); await env.DB.prepare("UPDATE licenses SET devices=? WHERE key=?").bind(JSON.stringify(devs), key).run();
+      if (devs.length > 1 && okEmail(lic.email)) {
+        const link = `${site}/api/license/reset?k=${encodeURIComponent(key)}&s=${await resetSig(env, key)}`;
+        ctx.waitUntil(sendEmail(env, s, lic.email, `Jom Baca Pro diaktifkan pada peranti baharu (${devs.length}/${maxD})`, emailWrap(s, `<p>Hai ${lic.name || ""},</p><p>Lesen Jom Baca Pro anda (${maskKey(key)}) baru sahaja diaktifkan pada <b>peranti ke-${devs.length}</b> daripada had ${maxD} peranti.</p><p>Jika itu anda atau keluarga anda, abaikan emel ini.</p><p>Jika <b>bukan</b> anda, atau anda mahu keluarkan peranti lama (contoh: tukar telefon), tekan pautan ini. Semua peranti akan dikeluarkan dan anda perlu aktifkan semula pada peranti anda sendiri:</p><p><a href="${link}">👉 Keluarkan semua peranti</a></p>`, "")).catch(() => {}));
+      }
     }
     const aff = await env.DB.prepare("SELECT code, token FROM affiliates WHERE email=?").bind(lic.email).first();
     return J({ ok: true, token: `${key}.${dev}.${await hmac(await licSecret(env), key + "|" + dev)}`, name: lic.name, aff: aff ? aff.code : "", aff_k: aff ? aff.token : "", pack: await contentPack(env) });
+  }
+  if (p === "/api/license/reset" && M === "GET") {
+    const key = clip(url.searchParams.get("k"), 30), sg = url.searchParams.get("s") || "";
+    const page = (h, m) => new Response(`<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><body style="font-family:system-ui,sans-serif;max-width:520px;margin:40px auto;padding:0 16px;color:#2b2350"><h2>${h}</h2><p>${m}</p><p><a href="/app/">Buka Jom Baca</a></p></body>`, { headers: { "content-type": "text/html; charset=utf-8" } });
+    if (!key || sg !== await resetSig(env, key)) return page("Pautan tidak sah", "Pautan reset ini tidak sah atau sudah rosak.");
+    const r = await env.DB.prepare("UPDATE licenses SET devices='[]', fails=0 WHERE key=?").bind(key).run();
+    if (!r.meta.changes) return page("Lesen tidak dijumpai", "");
+    ctx.waitUntil(tg(env, `🔄 Pemilik lesen ${maskKey(key)} reset semua peranti.`));
+    return page("✅ Semua peranti dikeluarkan", "Peranti lain tidak lagi boleh guna lesen ini. Buka Jom Baca pada peranti anda dan masukkan semula kod lesen (👑 → Sudah beli?).");
+  }
+  if (p === "/api/license/reset-request" && M === "POST") {
+    const d = await body(); const key = clip(String(d.key || "").toUpperCase().replace(/\s/g, ""), 30);
+    const lic = key ? await env.DB.prepare("SELECT * FROM licenses WHERE key=?").bind(key).first() : null;
+    if (lic && okEmail(lic.email)) {
+      const s = await settings(env), site = siteUrl(env, s, req);
+      const link = `${site}/api/license/reset?k=${encodeURIComponent(key)}&s=${await resetSig(env, key)}`;
+      await sendEmail(env, s, lic.email, "Pautan reset peranti Jom Baca Pro", emailWrap(s, `<p>Hai ${lic.name || ""},</p><p>Ada permintaan untuk keluarkan peranti daripada lesen anda (${maskKey(key)}). Jika itu anda, tekan pautan ini:</p><p><a href="${link}">👉 Keluarkan semua peranti</a></p><p>Jika bukan anda, abaikan emel ini. Lesen anda selamat.</p>`, "")).catch(() => {});
+    }
+    return J({ ok: true, msg: "Jika kod itu sah, pautan reset telah dihantar ke emel pemilik lesen." });
   }
   if (p === "/api/content" && M === "GET") {
     const lic = await verifyLicToken(env, req.headers.get("x-lic"));
     if (!lic) return J({ ok: false, error: "token" }, 401);
     if (lic.status !== "active") return J({ ok: false, revoked: true }, 403);
+    if (!lic._devOk) return J({ ok: false, revoked: true, removed: true }, 403);
     return J(await contentPack(env));
   }
   if (p === "/api/aff/signup" && M === "POST") {
@@ -878,10 +914,44 @@ async function handle(req, env, ctx) {
     return J({ ok: !!r.meta.changes });
   }
   if (p === "/api/testimonial" && M === "POST") {
-    const d = await body(); if (d.hp || !d.text) return J({ ok: true });
-    await env.DB.prepare("INSERT INTO testimonials(created,name,text) VALUES(?,?,?)").bind(now(), clip(d.name, 40), clip(d.text, 600)).run();
-    ctx.waitUntil(tg(env, `💬 Testimoni baharu (perlu lulus di admin): ${clip(d.text, 200)}`));
+    const d = await body(); if (d.hp) return J({ ok: true });
+    const text = clip(String(d.text || "").trim(), 800);
+    if (text.length < 10) return bad("Sila tulis sekurang-kurangnya satu ayat.");
+    const key = clip(String(d.key || "").toUpperCase(), 30);
+    const lic = key ? await env.DB.prepare("SELECT kind FROM licenses WHERE key=?").bind(key).first() : null;
+    const kind = lic ? (lic.kind || "paid") : "public";
+    await env.DB.prepare("INSERT INTO testimonials(created,name,text,rating,kind,lic,consent) VALUES(?,?,?,?,?,?,?)").bind(now(), clip(d.name, 50), text, Math.max(1, Math.min(5, +d.rating || 5)), kind, lic ? key : null, d.consent ? 1 : 0).run();
+    ctx.waitUntil(tg(env, `💬 Maklum balas baharu ${"⭐".repeat(Math.max(1, Math.min(5, +d.rating || 5)))} (${kind}${d.consent ? ", boleh disiarkan" : ", JANGAN siar"}):\n${clip(text, 400)}\n— ${clip(d.name, 50)}\nLulus di /admin → Produk`));
     return J({ ok: true });
+  }
+  if (p === "/api/tester" && M === "GET") {
+    const s = await settings(env);
+    const n = await env.DB.prepare("SELECT COUNT(*) n FROM licenses WHERE kind='tester'").first();
+    const left = Math.max(0, +s.tester_slots - n.n);
+    return J({ open: s.tester_open === "1" && left > 0, left, slots: +s.tester_slots });
+  }
+  if (p === "/api/tester" && M === "POST") {
+    const d = await body(); if (d.hp) return J({ ok: true });
+    const s = await settings(env), site = siteUrl(env, s, req);
+    const email = String(d.email || "").toLowerCase().trim(), phone = cleanPhone(d.phone), name = clip(String(d.name || "").trim(), 60);
+    if (!name || !okEmail(email) || !phone) return bad("Sila isi nama, emel dan no. telefon yang sah.");
+    if (!d.agree) return bad("Sila tandakan persetujuan untuk memberi maklum balas.");
+    if (s.tester_open !== "1") return bad("Pendaftaran pengguji sudah ditutup. Terima kasih atas minat anda!");
+    const dup = await env.DB.prepare("SELECT key FROM licenses WHERE email=? OR (phone IS NOT NULL AND phone=?)").bind(email, phone).first();
+    if (dup) return bad("Emel atau nombor ini sudah mempunyai lesen Jom Baca Pro.");
+    const n = await env.DB.prepare("SELECT COUNT(*) n FROM licenses WHERE kind='tester'").first();
+    if (n.n >= +s.tester_slots) return bad("Maaf, semua tempat pengguji sudah penuh.");
+    const key = newKey();
+    await env.DB.prepare("INSERT INTO licenses(key,order_id,email,name,created,kind,phone) VALUES(?,?,?,?,?,'tester',?)").bind(key, null, email, name, now(), phone).run();
+    const lead = await upsertLead(env, { name, email, phone, child_age: d.child_age, src: "pengguji" }, "lead");
+    if (lead) await env.DB.prepare("UPDATE leads SET stage='tester', notes=? WHERE id=?").bind(clip(`Pengguji. Keperluan: ${d.needs || "-"}`, 300), lead.id).run();
+    const fb = `${site}/testimoni?k=${encodeURIComponent(key)}`;
+    const html = emailWrap(s, `<p>Hai ${name.split(" ")[0]},</p><p>Terima kasih kerana menyertai <b>Program Pengguji Awal Jom Baca!</b> 🎉</p><p>Kod lesen Pro anda:</p><p style="font-size:22px;font-weight:bold;letter-spacing:2px">${key}</p><p><a href="${site}/app/?lesen=${key}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">👉 Buka Jom Baca Pro</a></p><p><b>Permintaan kami:</b> guna bersama anak sekurang-kurangnya 10 minit sehari selama 7 hari. Selepas itu, ceritakan pengalaman sebenar anda, yang baik dan yang perlu diperbaiki:</p><p><a href="${fb}">✍️ Borang maklum balas</a></p><p>Kami akan ingatkan anda pada hari ke-7.</p>`, "");
+    await sendEmail(env, s, email, "Lesen Pengguji Jom Baca Pro anda: " + key, html).catch(() => {});
+    await env.DB.prepare("INSERT INTO emails(created,lead_id,to_email,subject,html,send_at,kind) VALUES(?,?,?,?,?,?,?)").bind(now(), lead ? lead.id : null, email, "7 hari dengan Jom Baca: macam mana anak anda?",
+      emailWrap(s, `<p>Hai ${name.split(" ")[0]},</p><p>Sudah seminggu anda mencuba Jom Baca Pro. Boleh luangkan 2 minit untuk ceritakan pengalaman anda? Maklum balas jujur, termasuk yang kurang baik, sangat membantu kami memperbaiki app ini.</p><p><a href="${fb}">✍️ Tulis maklum balas</a></p><p>Tip: buat <b>Ujian Kelancaran 1 minit</b> dalam Ruang Ibu Bapa dan kongsi angkanya. Ia menunjukkan kemajuan sebenar anak.</p>`, ""), now() + 7 * DAY, "tester_fb").run();
+    ctx.waitUntil(tg(env, `🧪 Pengguji baharu (${n.n + 1}/${s.tester_slots}): ${name} · ${phone} · anak ${clip(d.child_age, 20) || "-"} · ${clip(d.needs, 60) || "-"}`));
+    return J({ ok: true, key, app: `/app/?lesen=${key}`, left: +s.tester_slots - n.n - 1 });
   }
   if (p === "/api/unsub" && M === "GET") {
     const id = +url.searchParams.get("l");
@@ -948,6 +1018,7 @@ async function handle(req, env, ctx) {
         posts: f === "manual" ? "SELECT * FROM posts WHERE status IN ('manual','manual_wait') ORDER BY scheduled_at LIMIT 100" : "SELECT * FROM posts ORDER BY COALESCE(posted_at, scheduled_at) DESC LIMIT 150",
         leads: f === "hot" ? "SELECT * FROM leads WHERE bought=0 AND unsub=0 AND phone!='' ORDER BY contacted ASC, (stage='checkout') DESC, score DESC, created DESC LIMIT 100" : "SELECT * FROM leads ORDER BY id DESC LIMIT 200",
         orders: "SELECT id,created,name,email,phone,amount,coupon,ref,src,status,paid_at,license,note FROM orders ORDER BY created DESC LIMIT 200",
+        licenses: "SELECT key,name,email,kind,status,created,json_array_length(devices) devices,fails FROM licenses ORDER BY created DESC LIMIT 300",
         affiliates: "SELECT a.code,a.name,a.email,a.phone,a.handle,a.payout,a.rate,a.status,a.buyer,a.created,(SELECT COUNT(*) FROM commissions c WHERE c.code=a.code AND c.status!='void') sales,(SELECT COALESCE(SUM(amount),0) FROM commissions c WHERE c.code=a.code AND c.status='pending') owed FROM affiliates a ORDER BY sales DESC, created DESC LIMIT 200",
         commissions: "SELECT c.*, a.name, a.payout FROM commissions c LEFT JOIN affiliates a ON a.code=c.code ORDER BY c.status='pending' DESC, c.id DESC LIMIT 200",
         variants: "SELECT * FROM variants ORDER BY status='live' DESC, slot, id DESC LIMIT 100",
@@ -984,7 +1055,8 @@ async function handle(req, env, ctx) {
           await env.DB.batch([env.DB.prepare("UPDATE orders SET status='refunded' WHERE id=?").bind(id), env.DB.prepare("UPDATE licenses SET status='revoked' WHERE order_id=?").bind(id), env.DB.prepare("UPDATE commissions SET status='void' WHERE order_id=? AND status='pending'").bind(id)]);
           await bump(env, [["refund"], ["rev", -o.amount]]); break;
         }
-        case "lic_reset": await run("UPDATE licenses SET devices='[]' WHERE key=?", clip(d.key, 30)); break;
+        case "lic_reset": await run("UPDATE licenses SET devices='[]', fails=0 WHERE key=?", clip(d.key, 30)); break;
+        case "lic_status": await run("UPDATE licenses SET status=? WHERE key=?", d.status === "revoked" ? "revoked" : "active", clip(d.key, 30)); break;
         case "comm_paid": for (const cid of (d.ids || [id])) await run("UPDATE commissions SET status='paid', paid_at=? WHERE id=?", now(), +cid); break;
         case "aff_status": await run("UPDATE affiliates SET status=?, rate=COALESCE(?,rate) WHERE code=?", d.status, d.rate ?? null, id); break;
         case "variant_status": await run("UPDATE variants SET status=? WHERE id=?", d.status, +id); break;

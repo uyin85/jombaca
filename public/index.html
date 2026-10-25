@@ -175,7 +175,7 @@
       <div><span class="e">🔥</span><p><b>Streak harian</b>Anak nampak berapa hari berturut-turut dia membaca, jadi esok dia nak sambung lagi.</p></div>
       <div><span class="e">👨‍👩‍👧</span><p><b>Ruang Ibu Bapa</b>Minit membaca, ketepatan, tahap selesai dan senarai perkataan yang perlu dilatih.</p></div>
       <div><span class="e">🖨️</span><p><b>Pusat Cetak</b>Kad imbas, lembaran kerja, sijil dan pelan 30 hari untuk setiap tahap. Cetak sebanyak mana pun.</p></div>
-      <div><span class="e">👧👦</span><p><b>5 profil anak</b>Adik-beradik guna satu telefon, kemajuan masing-masing berasingan. Guna di 5 peranti.</p></div>
+      <div><span class="e">👧👦</span><p><b>5 profil anak</b>Adik-beradik guna satu telefon, kemajuan masing-masing berasingan. Guna di 3 peranti.</p></div>
       <div><span class="e">📶</span><p><b>Boleh guna offline</b>Pasang di skrin utama telefon atau tablet. Tak perlu muat turun dari app store.</p></div>
       <div><span class="e">🧭</span><p><b>Ujian penempatan 2 minit</b>App cari tahap yang paling sesuai, supaya anak tak bosan ulang perkara yang dia sudah tahu.</p></div>
       <div><span class="e">📈</span><p><b>Ujian kelancaran 1 minit</b>Ukur berapa perkataan anak baca dengan betul dalam seminit, dan lihat grafnya naik setiap minggu.</p></div>
@@ -199,7 +199,7 @@
       <div class="ln"><span>Pek cerita baharu setiap minggu, seumur hidup</span><span>RM100</span></div>
       <div class="ln"><span>Ujian penempatan &amp; ujian kelancaran dengan graf kemajuan</span><span>RM90</span></div>
       <div class="ln"><span>Misi Harian &amp; laporan kemajuan ibu bapa</span><span>RM90</span></div>
-      <div class="ln"><span>5 profil anak, 5 peranti, offline</span><span>RM60</span></div>
+      <div class="ln"><span>5 profil anak, 3 peranti, offline</span><span>RM60</span></div>
       <div class="ln"><span>Bonus: jadi affiliate, dapat komisen setiap kawan yang beli</span><span>bonus</span></div>
       <div class="tot"><span>Jumlah anggaran nilai</span><span>RM1,000</span></div>
       <div class="pay-now"><div><div class="was">Harga anda hari ini</div><small>sekali bayar, akses seumur hidup</small></div><b data-price>RM20</b></div>
@@ -243,7 +243,7 @@
     <details class="q"><summary>Pengecaman suara berfungsi di semua telefon?</summary><p>Ia berfungsi paling baik di Chrome (Android, komputer). Jika mikrofon tidak disokong, ibu bapa boleh tekan butang "tandakan betul" dan semua ciri lain tetap berfungsi, termasuk kuiz dengar dan pilih.</p></details>
     <details class="q"><summary>Suara anak saya disimpan?</summary><p>Tidak. Suara diproses oleh pelayar untuk semakan sebutan dan tidak dirakam atau disimpan oleh kami. Kemajuan anak disimpan dalam peranti anda.</p></details>
     <details class="q"><summary>Bayar sekali sahaja?</summary><p>Ya. Sekali bayar, akses seumur hidup, termasuk pek cerita baharu yang ditambah setiap minggu. Tiada caj bulanan.</p></details>
-    <details class="q"><summary>Boleh guna untuk lebih seorang anak?</summary><p>Boleh. Satu lesen untuk sehingga 5 profil anak dan 5 peranti.</p></details>
+    <details class="q"><summary>Boleh guna untuk lebih seorang anak?</summary><p>Boleh. Satu lesen untuk sehingga 5 profil anak dan 3 peranti (contoh: telefon ibu, telefon ayah dan tablet).</p></details>
     <details class="q"><summary>Saya cikgu tadika. Boleh guna di kelas?</summary><p>Boleh guna profil untuk beberapa murid dan cetak lembaran kerja untuk kelas. Untuk lesen kelas yang lebih besar, hubungi kami.</p></details>
   </div>
 </section>
@@ -315,7 +315,7 @@
     if (d.guarantee_days > 0) { $("guar").textContent = "🛡️ Jaminan " + d.guarantee_days + " hari: jika Jom Baca! tidak sesuai untuk anak anda, hubungi kami dalam " + d.guarantee_days + " hari untuk bayaran balik penuh."; $("guar").style.display = "block"; }
     if (d.buyers) $("trust").textContent = d.buyers + " keluarga sudah guna Jom Baca Pro. Bayar sekali, guna selamanya. Suara anak tidak dirakam.";
     if (d.testimonials && d.testimonials.length) {
-      $("tst").innerHTML = d.testimonials.map(t => `<blockquote>${t.text.replace(/[<>]/g, "")}<cite>${(t.name || "").replace(/[<>]/g, "")}</cite></blockquote>`).join("");
+      $("tst").innerHTML = d.testimonials.map(t => `<blockquote>${t.rating ? `<div aria-label="${t.rating} bintang">${"⭐".repeat(t.rating)}</div>` : ""}${t.text.replace(/[<>]/g, "")}<cite>${(t.name || "").replace(/[<>]/g, "")}${t.kind === "tester" ? " · Pengguji awal (menerima akses percuma)" : t.kind === "paid" ? " · Pembeli" : ""}</cite></blockquote>`).join("");
       $("tstSec").style.display = "";
     }
     if (d.wa) $("waLink").innerHTML = ` · <a href="https://wa.me/${d.wa}" data-ev="wa_click">WhatsApp kami</a>`;

@@ -452,6 +452,7 @@
     .flbars i { display: block; width: 100%; background: linear-gradient(180deg,#9be38f,#17b26a); border-radius: 6px 6px 2px 2px; min-height: 2px; }
     #setp { overflow-y: auto; align-items: flex-start; } #setp .sbox { margin: auto 0; }
     #gateOv { z-index: 55; }
+    .pay details { width: 100%; text-align: left; } .pay .actrow { width: 100%; } #actMsg .btn2 { margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -584,7 +585,7 @@
       <li>✅ <b>Pek cerita baharu setiap minggu</b>, percuma seumur hidup</li>
       <li>✅ <b>Misi Harian 10 minit</b> + laporan kemajuan untuk ibu bapa</li>
       <li>✅ <b>Pusat Cetak</b>: kad imbas, lembaran kerja, sijil (cetak tanpa had)</li>
-      <li>✅ Sehingga <b>5 profil anak</b> · 5 peranti · boleh guna offline</li>
+      <li>✅ Sehingga <b>5 profil anak</b> · 3 peranti · boleh guna offline</li>
       <li>✅ Mod Autisme, Disleksia &amp; <b>Ketik Jawapan</b> untuk anak belum bertutur</li>
       <li>✅ <b>Ujian penempatan</b> &amp; <b>ujian kelancaran 1 minit</b> dengan graf kemajuan</li>
     </ul>
@@ -1325,7 +1326,7 @@
       try {
         const r = await fetch(API + "/api/license/activate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, device: DEV }) });
         const j = await r.json();
-        if (!j.ok) { ev("act_fail"); return { ok: false, msg: j.error || "Kod tidak sah." }; }
+        if (!j.ok) { ev("act_fail"); return { ok: false, msg: j.error || "Kod tidak sah.", limit: !!j.limit, key }; }
         LIC = { key, token: j.token, name: j.name || "", aff: j.aff || "", affk: j.aff_k || "" };
         lss("jb_lic", JSON.stringify(LIC));
         if (j.pack) lss("jb_pack", JSON.stringify(j.pack));
@@ -1350,7 +1351,7 @@
         const r = await fetch(API + "/api/content", { headers: { "x-lic": LIC.token } });
         if (r.status === 401 || r.status === 403) {
           const j = await r.json().catch(() => ({}));
-          if (j.revoked) { lsd("jb_lic"); lsd("jb_pack"); location.reload(); }
+          if (j.revoked) { ev(j.removed ? "lic_removed" : "act_fail"); flush(); lsd("jb_lic"); lsd("jb_pack"); toast(j.removed ? "Lesen Pro telah dikeluarkan daripada peranti ini oleh pemilik lesen." : "Lesen Pro ini tidak lagi aktif.", 4000); setTimeout(() => location.reload(), 4200); }
           return;
         }
         if (!r.ok) return;
@@ -1437,6 +1438,7 @@
       $("mapStat").innerHTML = `<span class="chip">🔥 ${streak()}</span><span class="chip">⭐ ${stars}</span><span class="chip">🏅 ${done}/${CORE_N}</span>`;
       $("mapBar").style.width = Math.round(100 * done / CORE_N) + "%";
       const md = !!dget().m, p = curProf();
+      document.querySelector(".mh-s").textContent = isPro() && LIC.name ? "👑 Berlesen kepada: " + LIC.name : "Pilih tahap untuk mula";
       $("mapAct").innerHTML = `<button class="mis${md ? " done" : ""}" id="maMis">${md ? "✅ Misi Hari Ini selesai · main lagi?" : "🎯 Misi Hari Ini (10 minit)"}</button><button id="maWho">${esc(p.av)} ${esc(p.name)}</button><button id="maPar">👨‍👩‍👧 Ibu Bapa</button><button id="maPrint">🖨️ Cetak</button>`;
       $("maMis").onclick = startMission; $("maWho").onclick = () => openGate(); $("maPar").onclick = () => openGate(); $("maPrint").onclick = () => openGate("print");
       if (!isPro()) {
@@ -1482,7 +1484,14 @@
       $("actMsg").style.color = "#2b2350"; $("actMsg").textContent = "Sedang semak…";
       const r = await activate($("actKey").value);
       if (r.ok) { $("actMsg").style.color = "#17b26a"; $("actMsg").textContent = "✓ Pro diaktifkan! Memuatkan…"; setTimeout(() => location.reload(), 900); }
-      else { $("actMsg").style.color = "#e0304f"; $("actMsg").textContent = r.msg; }
+      else {
+        $("actMsg").style.color = "#e0304f"; $("actMsg").textContent = r.msg;
+        if (r.limit) {
+          const b = document.createElement("button"); b.className = "btn2 alt"; b.style.marginTop = "8px"; b.textContent = "📧 Hantar pautan reset ke emel pemilik lesen";
+          b.onclick = async () => { b.disabled = true; ev("reset_req"); try { const x = await (await fetch(API + "/api/license/reset-request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: r.key }) })).json(); $("actMsg").style.color = "#2b2350"; $("actMsg").textContent = x.msg || "Pautan reset dihantar."; } catch (e) { $("actMsg").textContent = "Tiada sambungan internet."; } b.remove(); };
+          $("actMsg").appendChild(document.createElement("br")); $("actMsg").appendChild(b);
+        }
+      }
     };
     if (API) fetch(API + "/api/lp?lite=1").then(r => r.json()).then(j => { if (j && j.price_label) $("payPrice").textContent = j.price_label; }).catch(() => {});
 

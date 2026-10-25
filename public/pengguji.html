@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Program Pengguji Awal: Jom Baca!</title>
+<meta name="description" content="10 keluarga pertama dapat Jom Baca Pro percuma sebagai pengguji awal, sebagai balasan maklum balas jujur selepas 7 hari.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style>
+  main { padding: 26px 0 60px; }
+  .slots { display: flex; gap: 6px; flex-wrap: wrap; margin: 16px 0 6px; }
+  .slot { width: 30px; height: 34px; border-radius: 9px; background: var(--t-green); box-shadow: inset 0 -3px 0 rgba(0,0,0,.15); }
+  .slot.taken { background: #d6dbe6; box-shadow: none; }
+  .deal { display: grid; gap: 12px; margin-top: 18px; }
+  .deal div { display: grid; grid-template-columns: 36px 1fr; gap: 10px; }
+  .deal .e { font-size: 26px; }
+  .panel { margin-top: 18px; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; margin-top: 14px; }
+  .consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+  .done { display: none; text-align: center; }
+  .key { font: 600 22px/1.2 Fredoka, sans-serif; letter-spacing: 2px; background: var(--sky); border-radius: 14px; padding: 12px; margin: 12px 0; word-break: break-all; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a href="/" class="small">← Jom Baca!</a>
+  <h1 style="margin-top:12px">Program Pengguji Awal</h1>
+  <p class="muted" style="margin-top:10px">Kami cari <b><span id="slotN">10</span> keluarga</b> untuk mencuba <b>Jom Baca Pro</b> secara percuma sebelum dilancarkan secara meluas. Sesuai untuk anak 4 hingga 8 tahun, termasuk anak autisme, disleksia atau yang belum bertutur dengan jelas.</p>
+  <div class="slots" id="slots" aria-label="Tempat pengguji"></div>
+  <p class="small muted" id="left">Memuatkan…</p>
+
+  <div class="deal">
+    <div><span class="e">🎁</span><p><b>Anda dapat</b><br>Lesen Jom Baca Pro penuh (40 tahap, semua mod khas), percuma, untuk selamanya.</p></div>
+    <div><span class="e">📅</span><p><b>Kami minta</b><br>Guna bersama anak sekurang-kurangnya 10 minit sehari selama 7 hari.</p></div>
+    <div><span class="e">✍️</span><p><b>Selepas 7 hari</b><br>Isi borang maklum balas 2 minit: apa yang berkesan, apa yang perlu diperbaiki. Maklum balas negatif pun sangat dialu-alukan.</p></div>
+    <div><span class="e">💬</span><p><b>Testimoni (pilihan)</b><br>Jika anda setuju, kata-kata anda boleh dipaparkan di laman kami, dengan label "Pengguji awal, menerima akses percuma".</p></div>
+  </div>
+
+  <div class="panel" id="formBox">
+    <form id="f" novalidate>
+      <label class="f" for="n">Nama ibu / bapa / guru</label><input class="in" id="n" autocomplete="name">
+      <label class="f" for="e">Emel (kod lesen dihantar ke sini)</label><input class="in" id="e" type="email" autocomplete="email" inputmode="email">
+      <label class="f" for="p">No. WhatsApp</label><input class="in" id="p" type="tel" autocomplete="tel" inputmode="tel" placeholder="012-345 6789">
+      <label class="f" for="a">Umur anak</label>
+      <select class="in" id="a"><option value="">Pilih</option><option>3 tahun</option><option>4 tahun</option><option>5 tahun</option><option>6 tahun</option><option>7 tahun</option><option>8 tahun ke atas</option><option>Saya guru (beberapa murid)</option></select>
+      <label class="f" for="nd">Keperluan khas (jika ada)</label>
+      <select class="in" id="nd"><option value="">Tiada</option><option>Autisme</option><option>Disleksia</option><option>Lambat bertutur</option><option>ADHD</option><option>Lain-lain</option></select>
+      <label class="consent"><input type="checkbox" id="ok"><span>Saya setuju menggunakan Jom Baca bersama anak selama 7 hari dan mengisi borang maklum balas jujur selepas itu.</span></label>
+      <div class="hp" aria-hidden="true"><input id="hp" tabindex="-1" autocomplete="off"></div>
+      <div class="err" id="err" role="alert"></div>
+      <button class="btn" style="width:100%" id="b">Sertai sebagai pengguji</button>
+    </form>
+  </div>
+  <div class="panel done" id="done">
+    <div style="font-size:56px">🎉</div>
+    <h2>Selamat datang, pengguji!</h2>
+    <p class="muted" style="margin-top:8px">Kod lesen Pro anda (juga dihantar ke emel):</p>
+    <div class="key" id="key"></div>
+    <a class="btn" id="open" href="/app/" style="width:100%">Buka Jom Baca Pro</a>
+    <p class="small muted" style="margin-top:12px">Kami akan hantar borang maklum balas pada hari ke-7. Terima kasih kerana membantu!</p>
+  </div>
+</main>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  function paint(d) {
+    $("slotN").textContent = d.slots;
+    $("slots").innerHTML = Array.from({ length: d.slots }, (_, i) => `<i class="slot${i < d.slots - d.left ? " taken" : ""}"></i>`).join("");
+    $("left").textContent = d.open ? `${d.left} daripada ${d.slots} tempat masih kosong.` : "Semua tempat sudah penuh. Terima kasih atas minat anda!";
+    if (!d.open) { $("formBox").innerHTML = `<p>Program pengguji sudah penuh. Anda masih boleh <a href="/app/">cuba 6 tahap percuma</a> atau <a href="/#beli">dapatkan Jom Baca Pro</a>.</p>`; }
+  }
+  fetch("/api/tester").then(r => r.json()).then(paint).catch(() => { $("left").textContent = ""; });
+  $("f").onsubmit = async e => {
+    e.preventDefault(); $("err").textContent = "";
+    const d = { name: $("n").value.trim(), email: $("e").value.trim(), phone: $("p").value.trim(), child_age: $("a").value, needs: $("nd").value, agree: $("ok").checked, hp: $("hp").value };
+    if (!d.name || !/^\S+@\S+\.\S+$/.test(d.email) || d.phone.replace(/\D/g, "").length < 9) { $("err").textContent = "Sila isi nama, emel dan no. WhatsApp yang sah."; return; }
+    if (!d.agree) { $("err").textContent = "Sila tandakan persetujuan."; return; }
+    $("b").disabled = true;
+    try {
+      const r = await (await fetch("/api/tester", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d) })).json();
+      if (!r.ok) throw new Error(r.error || "Ralat. Cuba lagi.");
+      $("formBox").style.display = "none"; $("done").style.display = "block";
+      $("key").textContent = r.key; $("open").href = r.app;
+    } catch (err) { $("err").textContent = err.message; $("b").disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>
