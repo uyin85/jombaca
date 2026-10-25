@@ -1,6 +1,6 @@
 
   <script>
-  /* ===== JOM BACA v2: mod ketik jawapan, soalan pilihan, fon & latar, pemasa rehat, onboarding, ujian penempatan & kelancaran ===== */
+  /* ===== JOM BACA v2: mod tekan jawapan, soalan pilihan, fon & latar, pemasa rehat, onboarding, ujian penempatan & kelancaran ===== */
   (function () {
     const CUR = window.JB_CURR;
     const ev = (n, d) => { try { JB.ev(n, d); } catch (e) {} };
@@ -23,7 +23,7 @@
     };
     applyCfg();
 
-    /* ---------- Mod ketik jawapan & soalan pilihan ---------- */
+    /* ---------- Mod tekan jawapan & soalan pilihan ---------- */
     const tb = document.createElement("div"); tb.id = "tapBox"; $("word").insertAdjacentElement("afterend", tb);
     const labelOf = it => it.mcq ? it.correct : (it.w ? it.rawText : it.display);
     function distractors(it, n) {
@@ -49,7 +49,7 @@
     function pick(btn, okk, it) {
       if (tapLock || inQuiz) return; tapLock = true;
       const atL = L, atI = idx;
-      logT(it.target, ["(ketik) " + btn.textContent], okk);
+      logT(it.target, ["(tekan) " + btn.textContent], okk);
       if (okk) {
         btn.classList.add("correct");
         if (it.mcq) ok = Math.max(ok, 2);
@@ -71,10 +71,10 @@
         $("word").innerHTML = (psg ? `<span class="psg">${esc(psg)}</span>` : "") + `<span class="qst">${esc(qst)}</span>`;
         $("clue").textContent = ""; $("gd").textContent = "";
         setPic(it.e);
-        say(psg ? "Baca cerita 👀 kemudian ketik jawapan 👇" : "Dengar soalan 👂 kemudian ketik jawapan 👇");
+        say(psg ? "Baca cerita 👀 kemudian tekan jawapan 👇" : "Dengar soalan 👂 kemudian tekan jawapan 👇");
         if (CFGS.readfirst && !psg) setTimeout(demo, 450);
       } else if (CFGS.tap) {
-        say("Dengar 👂 kemudian ketik jawapan yang betul 👇 (3 kali)");
+        say("Dengar 👂 kemudian tekan jawapan yang betul 👇 (3 kali)");
       }
       if (tapMode) renderTap(); else { tb.className = ""; tb.innerHTML = ""; }
     };
@@ -198,7 +198,7 @@
       $("flOv").classList.add("on"); ev("fluency_start");
       if (words.length < 8) { $("flBody").innerHTML = `<p>Belum cukup perkataan. Habiskan beberapa tahap dahulu.</p>`; return; }
       let mode = "ready", left = 60, t0 = 0, timer = null; const errs = new Set();
-      const help = { ready: "Anak baca perkataan dari kiri ke kanan, baris demi baris. Ibu bapa ketik perkataan yang <b>salah</b> dibaca.", run: "Ketik perkataan yang salah dibaca…", last: "Masa tamat! Ketik perkataan <b>terakhir</b> yang anak baca." };
+      const help = { ready: "Anak baca perkataan dari kiri ke kanan, baris demi baris. Ibu bapa tekan perkataan yang <b>salah</b> dibaca.", run: "Tekan perkataan yang salah dibaca…", last: "Masa tamat! Tekan perkataan <b>terakhir</b> yang anak baca." };
       $("flBody").innerHTML = `<div id="flTime">60</div><p id="flHelp" style="margin:0">${help.ready}</p><div id="flGrid">${words.map((w, i) => `<button class="flw" data-i="${i}">${esc(w)}</button>`).join("")}</div><button class="big" id="flGo">▶ Mula</button>`;
       const stopToLast = () => { clearInterval(timer); mode = "last"; $("flHelp").innerHTML = help.last; $("flGo").style.display = "none"; };
       $("flGo").onclick = () => {

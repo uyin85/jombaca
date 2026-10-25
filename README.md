@@ -2,7 +2,7 @@
 
 Satu sistem lengkap yang menjual **Jom Baca! Pro** (RM20) setiap hari:
 
-- **Produk** dinaik taraf: 40 tahap ikut pola KV → KVK → KVKK (seperti di sekolah), mod Autisme / Disleksia / Ketik Jawapan, ujian penempatan & kelancaran, Misi Harian, Ruang Ibu Bapa, Pusat Cetak, 5 profil, offline, pek cerita mingguan, lesen.
+- **Produk** dinaik taraf: 40 tahap ikut pola KV → KVK → KVKK (seperti di sekolah), mod Autisme / Disleksia / Pilih Jawapan, ujian penempatan & kelancaran, Misi Harian, Ruang Ibu Bapa, Pusat Cetak, 5 profil, offline, pek cerita mingguan, lesen.
 - **HQ** (Cloudflare Worker + D1): laman jualan dengan A/B automatik, checkout ToyyibPay, lesen, leads, affiliate, auto-post, emel nurture, papan admin.
 - **Otak** (8 agen AI di Modal + GitHub Actions, boleh disambung ke Hermes): merancang, menulis kandungan, video Flow, promo, follow-up lead, affiliate, produk, dan **belajar daripada data setiap malam**.
 
@@ -210,6 +210,6 @@ HQ_URL=http://127.0.0.1:8787 BRAIN_KEY=b BRAIN_DRY=1 GEMINI_API_KEY=... python -
 - **v2.4 (26 Okt 2026):** agen Sosial kini melukis **kad gambar** (1080×1350) dan **video hook** (1080×1920, muzik latar kanak-kanak & kesan bunyi disintesis sendiri, bebas hak cipta) secara automatik di Modal (Chromium + ffmpeg, templat berjenama, tiada AI imej). Auto-post ke **Instagram** (gambar & Reels) melalui token FB Page. Threads & FB Page disambung dengan tampal token di /admin → Tetapan → Media sosial.
 - **v2.3 (25 Okt 2026):** pengguji dapat Pro percubaan 10 hari dan wajib muat naik 2 video (anak guna app + testimoni) di /pengguji-hantar; pemilik semak & luluskan di /admin → 🧪 Pengguji. Video disimpan peribadi dalam R2 (pautan bertandatangan, dipadam auto selepas `video_keep_days`). Pengawas sistem + amaran Telegram.
 - **v2.2:** program 10 pengguji awal, had 3 peranti setiap lesen, reset peranti melalui emel, testimoni dengan izin.
-- **v2.1 (25 Okt 2026):** kurikulum 40 tahap ikut pola KV → KVK → KVKK, mod Autisme/Disleksia/Ketik Jawapan, permainan bunyi, soalan pemahaman, ujian penempatan & kelancaran.
+- **v2.1 (25 Okt 2026):** kurikulum 40 tahap ikut pola KV → KVK → KVKK, mod Autisme/Disleksia/Pilih Jawapan, permainan bunyi, soalan pemahaman, ujian penempatan & kelancaran.
 - **v2.0.1:** pembetulan Bahasa Melayu (sapi → satu, jidar → jiran, dll.), suara ms-MY diutamakan.
 - **v2.0:** Jom Baca Pro + HQ + otak multi-agen.

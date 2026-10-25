@@ -27,9 +27,9 @@ rep("  </style>\n</head>", R("pro2.css") + "    #gateOv { z-index: 55; }\n  </st
 # Tetapan baharu
 rep('<button class="qz-btn" id="p_dys" style="padding:8px 14px">📖 Disleksia (baca dulu)</button></div>',
     '<button class="qz-btn" id="p_dys" style="padding:8px 14px">📖 Disleksia</button><button class="qz-btn" id="p_tap" style="padding:8px 14px">🤫 Belum bertutur</button></div>')
-rep('<label><input type="checkbox" id="s_big"><span>Huruf besar dan jarak luas<small>Ketik huruf atau suku kata untuk dengar bunyinya.</small></span></label>',
-    '<label><input type="checkbox" id="s_big"><span>Huruf besar dan jarak luas<small>Ketik huruf atau suku kata untuk dengar bunyinya.</small></span></label>\n'
-    '    <label><input type="checkbox" id="s_tap"><span>Mod Ketik Jawapan<small>Untuk anak yang belum bertutur atau sebutan belum jelas: anak dengar, kemudian ketik jawapan. Mikrofon tidak digunakan.</small></span></label>\n'
+rep('<label><input type="checkbox" id="s_big"><span>Huruf besar dan jarak luas<small>Tekan huruf atau suku kata untuk dengar bunyinya.</small></span></label>',
+    '<label><input type="checkbox" id="s_big"><span>Huruf besar dan jarak luas<small>Tekan huruf atau suku kata untuk dengar bunyinya.</small></span></label>\n'
+    '    <label><input type="checkbox" id="s_tap"><span>Mod Pilih Jawapan<small>Untuk anak yang belum bertutur atau sebutan belum jelas: anak dengar, kemudian tekan jawapan. Mikrofon tidak digunakan.</small></span></label>\n'
     '    <div class="srow"><b>Fon</b><select id="s_font"><option value="">Biasa (Fredoka)</option><option value="atk">Atkinson Hyperlegible (b, d, p jelas)</option><option value="lexend">Lexend (mudah dibaca)</option></select></div>\n'
     '    <div class="srow"><b>Warna latar</b><select id="s_bg"><option value="">Putih</option><option value="cream">Krim</option><option value="blue">Biru lembut</option><option value="yellow">Kuning lembut</option></select></div>\n'
     '    <div class="srow"><b>Kelajuan suara</b><select id="s_rate"><option value="0.75">Perlahan</option><option value="1">Biasa</option><option value="1.15">Laju</option></select></div>\n'
@@ -70,7 +70,7 @@ rep('if (LV[i][3].length) opts.push(', 'if (LV[i][3].length && LV[i][3][0][0] !=
 rep('<li>✅ <b>28 tahap lagi</b>: suku kata → perkataan → imbuhan → ayat → cerita (290+ item)</li>',
     '<li>✅ <b><span data-jb="pro_n">34</span> tahap lagi</b>: suku kata KV → KVK → KVKK → bunyi khas → imbuhan → ayat → pemahaman (<span data-jb="items">360</span>+ item)</li>')
 rep('<li>✅ Mod Autisme &amp; Disleksia</li>',
-    '<li>✅ Mod Autisme, Disleksia &amp; <b>Ketik Jawapan</b> untuk anak belum bertutur</li>\n      <li>✅ <b>Ujian penempatan</b> &amp; <b>ujian kelancaran 1 minit</b> dengan graf kemajuan</li>')
+    '<li>✅ Mod Autisme, Disleksia &amp; <b>Pilih Jawapan</b> untuk anak belum bertutur</li>\n      <li>✅ <b>Ujian penempatan</b> &amp; <b>ujian kelancaran 1 minit</b> dengan graf kemajuan</li>')
 # HTML overlay + skrip v2
 rep('  <div id="toast"></div>\n', '  <div id="toast"></div>\n' + R("pro2.html"))
 rep('</body>\n</html>', R("pro2.js") + '</body>\n</html>')

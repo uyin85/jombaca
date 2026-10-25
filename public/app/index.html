@@ -413,7 +413,7 @@
     #certOv .sbox { text-align: center; align-items: center; }
     #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #2b2350; color: #fff; padding: 10px 18px; border-radius: 18px; font-weight: 600; z-index: 60; display: none; max-width: 90vw; text-align: center; }
 
-    /* ===== v2: mod ketik, soalan, fon, latar, rehat, onboarding, ujian ===== */
+    /* ===== v2: mod tekan, soalan, fon, latar, rehat, onboarding, ujian ===== */
     #tapBox { display: none; width: 100%; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
     #tapBox.on { display: grid; }
     #tapBox.one { grid-template-columns: 1fr; }
@@ -563,8 +563,8 @@
     <div style="font-weight:600">Profil cepat (boleh pilih kedua-duanya):</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="qz-btn" id="p_aut" style="padding:8px 14px">🧩 Autisme (tenang)</button><button class="qz-btn" id="p_dys" style="padding:8px 14px">📖 Disleksia</button><button class="qz-btn" id="p_tap" style="padding:8px 14px">🤫 Belum bertutur</button></div>
     <label><input type="checkbox" id="s_rf"><span>Mod Baca Dulu<small>Gambar dan sebutan disembunyikan. Anak membaca sendiri dahulu; bantuan muncul selepas tersilap.</small></span></label>
-    <label><input type="checkbox" id="s_big"><span>Huruf besar dan jarak luas<small>Ketik huruf atau suku kata untuk dengar bunyinya.</small></span></label>
-    <label><input type="checkbox" id="s_tap"><span>Mod Ketik Jawapan<small>Untuk anak yang belum bertutur atau sebutan belum jelas: anak dengar, kemudian ketik jawapan. Mikrofon tidak digunakan.</small></span></label>
+    <label><input type="checkbox" id="s_big"><span>Huruf besar dan jarak luas<small>Tekan huruf atau suku kata untuk dengar bunyinya.</small></span></label>
+    <label><input type="checkbox" id="s_tap"><span>Mod Pilih Jawapan<small>Untuk anak yang belum bertutur atau sebutan belum jelas: anak dengar, kemudian tekan jawapan. Mikrofon tidak digunakan.</small></span></label>
     <div class="srow"><b>Fon</b><select id="s_font"><option value="">Biasa (Fredoka)</option><option value="atk">Atkinson Hyperlegible (b, d, p jelas)</option><option value="lexend">Lexend (mudah dibaca)</option></select></div>
     <div class="srow"><b>Warna latar</b><select id="s_bg"><option value="">Putih</option><option value="cream">Krim</option><option value="blue">Biru lembut</option><option value="yellow">Kuning lembut</option></select></div>
     <div class="srow"><b>Kelajuan suara</b><select id="s_rate"><option value="0.75">Perlahan</option><option value="1">Biasa</option><option value="1.15">Laju</option></select></div>
@@ -586,7 +586,7 @@
       <li>✅ <b>Misi Harian 10 minit</b> + laporan kemajuan untuk ibu bapa</li>
       <li>✅ <b>Pusat Cetak</b>: kad imbas, lembaran kerja, sijil (cetak tanpa had)</li>
       <li>✅ Sehingga <b>5 profil anak</b> · 3 peranti · boleh guna offline</li>
-      <li>✅ Mod Autisme, Disleksia &amp; <b>Ketik Jawapan</b> untuk anak belum bertutur</li>
+      <li>✅ Mod Autisme, Disleksia &amp; <b>Pilih Jawapan</b> untuk anak belum bertutur</li>
       <li>✅ <b>Ujian penempatan</b> &amp; <b>ujian kelancaran 1 minit</b> dengan graf kemajuan</li>
     </ul>
     <div class="price"><b id="payPrice">RM20</b><small>sekali bayar · akses seumur hidup · tiada langganan</small></div>
@@ -665,7 +665,7 @@
         <button class="chip2" data-m="autisme">🧩 Autisme<small>Mod tenang, tiada bunyi salah, jadual Dulu → Kemudian, rehat setiap 10 minit.</small></button>
         <button class="chip2" data-m="disleksia">📖 Disleksia<small>Fon jelas (b, d, p mudah dibeza), huruf besar, latar krim, suara perlahan.</small></button>
         <button class="chip2" data-m="kedua">🧩📖 Autisme + Disleksia<small>Gabungan kedua-dua tetapan.</small></button>
-        <button class="chip2" data-m="ketik">🤫 Belum bertutur / sebutan belum jelas<small>Anak dengar, kemudian ketik jawapan. Tanpa mikrofon.</small></button>
+        <button class="chip2" data-m="ketik">🤫 Belum bertutur / sebutan belum jelas<small>Anak dengar, kemudian tekan jawapan. Tanpa mikrofon.</small></button>
       </div>
       <button class="big" id="onbNext">Seterusnya</button>
     </div>
@@ -970,7 +970,7 @@
       $("clue").textContent = CFGS.readfirst ? "" : it.c;
       $("gd").innerHTML = showG ? (it.w ? guide(it.target) + " → " + it.w.split("-").map(guide).join(" · ") : it.parts.map(guide).join(" · ")) : "";
       ok = 0; fails = 0; bal(); $("skip").style.transform = "";
-      if (CFGS.readfirst) { say("Baca dengan kuat dulu 👀🎤 (ketik huruf untuk dengar)"); }
+      if (CFGS.readfirst) { say("Baca dengan kuat dulu 👀🎤 (tekan huruf untuk dengar)"); }
       else { say("1) Dengar 👂  2) Sebut 3x 🎤 → gambar jadi 3D! ✨"); setTimeout(demo, 450); }
     }
 
@@ -1224,7 +1224,7 @@
     let mascot = "monkey"; try { mascot = PS.get("mascot") || "monkey"; } catch (e) {}
     function renderMascot() { $("mas").innerHTML = mascot === "monkey" ? MONKEY : `<span class="pet">${mascot}</span>`; }
     function renderColl() {
-      const box = $("items"); box.innerHTML = '<div class="mph">Ketik untuk jadikan maskot ✨</div>';
+      const box = $("items"); box.innerHTML = '<div class="mph">Tekan untuk jadikan maskot ✨</div>';
       ["monkey", ...new Set(coll)].forEach(p => {
         const b = document.createElement("button"); b.className = "mp" + (p === mascot ? " sel" : "");
         b.innerHTML = p === "monkey" ? '<span class="mm">' + MONKEY + '</span>' : p;
@@ -1251,7 +1251,7 @@
     $("s_calm").onchange = () => { if ($("s_calm").checked) { $("s_auto").checked = false; $("s_acc").checked = true; $("s_sch").checked = true; } };
     $("s_ok").onclick = () => { CFGS = { calm: $("s_calm").checked, auto: $("s_auto").checked, accept: $("s_acc").checked, sched: $("s_sch").checked, reward: tmpRw, readfirst: $("s_rf").checked, bigtext: $("s_big").checked, tap: $("s_tap").checked, font: $("s_font").value, bg: $("s_bg").value, rate: +$("s_rate").value || 1, timer: +$("s_timer").value || 0 }; try { PS.set("cfgs", JSON.stringify(CFGS)); } catch (e) {} $("setp").style.display = "none"; applyCfg(); };
     $("setBtn").onclick = openSet; $("setBtn2").onclick = openSet;
-    /* Disleksia: Baca Dulu, ketik suku kata, ulang kaji pintar */
+    /* Disleksia: Baca Dulu, tekan suku kata, ulang kaji pintar */
     let BASE_LV = LV.length;
     let WEAK = {}; try { WEAK = JSON.parse(PS.get("weak") || "{}"); } catch (e) {}
     function noteWeak(d) {
@@ -1695,7 +1695,7 @@
   </script>
 
   <script>
-  /* ===== JOM BACA v2: mod ketik jawapan, soalan pilihan, fon & latar, pemasa rehat, onboarding, ujian penempatan & kelancaran ===== */
+  /* ===== JOM BACA v2: mod tekan jawapan, soalan pilihan, fon & latar, pemasa rehat, onboarding, ujian penempatan & kelancaran ===== */
   (function () {
     const CUR = window.JB_CURR;
     const ev = (n, d) => { try { JB.ev(n, d); } catch (e) {} };
@@ -1718,7 +1718,7 @@
     };
     applyCfg();
 
-    /* ---------- Mod ketik jawapan & soalan pilihan ---------- */
+    /* ---------- Mod tekan jawapan & soalan pilihan ---------- */
     const tb = document.createElement("div"); tb.id = "tapBox"; $("word").insertAdjacentElement("afterend", tb);
     const labelOf = it => it.mcq ? it.correct : (it.w ? it.rawText : it.display);
     function distractors(it, n) {
@@ -1744,7 +1744,7 @@
     function pick(btn, okk, it) {
       if (tapLock || inQuiz) return; tapLock = true;
       const atL = L, atI = idx;
-      logT(it.target, ["(ketik) " + btn.textContent], okk);
+      logT(it.target, ["(tekan) " + btn.textContent], okk);
       if (okk) {
         btn.classList.add("correct");
         if (it.mcq) ok = Math.max(ok, 2);
@@ -1766,10 +1766,10 @@
         $("word").innerHTML = (psg ? `<span class="psg">${esc(psg)}</span>` : "") + `<span class="qst">${esc(qst)}</span>`;
         $("clue").textContent = ""; $("gd").textContent = "";
         setPic(it.e);
-        say(psg ? "Baca cerita 👀 kemudian ketik jawapan 👇" : "Dengar soalan 👂 kemudian ketik jawapan 👇");
+        say(psg ? "Baca cerita 👀 kemudian tekan jawapan 👇" : "Dengar soalan 👂 kemudian tekan jawapan 👇");
         if (CFGS.readfirst && !psg) setTimeout(demo, 450);
       } else if (CFGS.tap) {
-        say("Dengar 👂 kemudian ketik jawapan yang betul 👇 (3 kali)");
+        say("Dengar 👂 kemudian tekan jawapan yang betul 👇 (3 kali)");
       }
       if (tapMode) renderTap(); else { tb.className = ""; tb.innerHTML = ""; }
     };
@@ -1893,7 +1893,7 @@
       $("flOv").classList.add("on"); ev("fluency_start");
       if (words.length < 8) { $("flBody").innerHTML = `<p>Belum cukup perkataan. Habiskan beberapa tahap dahulu.</p>`; return; }
       let mode = "ready", left = 60, t0 = 0, timer = null; const errs = new Set();
-      const help = { ready: "Anak baca perkataan dari kiri ke kanan, baris demi baris. Ibu bapa ketik perkataan yang <b>salah</b> dibaca.", run: "Ketik perkataan yang salah dibaca…", last: "Masa tamat! Ketik perkataan <b>terakhir</b> yang anak baca." };
+      const help = { ready: "Anak baca perkataan dari kiri ke kanan, baris demi baris. Ibu bapa tekan perkataan yang <b>salah</b> dibaca.", run: "Tekan perkataan yang salah dibaca…", last: "Masa tamat! Tekan perkataan <b>terakhir</b> yang anak baca." };
       $("flBody").innerHTML = `<div id="flTime">60</div><p id="flHelp" style="margin:0">${help.ready}</p><div id="flGrid">${words.map((w, i) => `<button class="flw" data-i="${i}">${esc(w)}</button>`).join("")}</div><button class="big" id="flGo">▶ Mula</button>`;
       const stopToLast = () => { clearInterval(timer); mode = "last"; $("flHelp").innerHTML = help.last; $("flGo").style.display = "none"; };
       $("flGo").onclick = () => {
