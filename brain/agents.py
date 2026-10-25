@@ -19,7 +19,7 @@ from .llm import ask_json
 MYT = dt.timezone(dt.timedelta(hours=8))
 
 GUARDRAILS = """PERATURAN WAJIB (jangan langgar):
-- Semua teks untuk pelanggan dalam Bahasa Malaysia standard (BUKAN Bahasa Indonesia: guna "kereta" bukan "mobil", "boleh" bukan "bisa", "percuma" bukan "gratis"). Santai, mesra ibu bapa Malaysia. Campuran sedikit English dibenarkan jika natural.
+- Semua teks untuk pelanggan dalam Bahasa Malaysia standard (BUKAN Bahasa Indonesia: guna "kereta" bukan "mobil", "boleh" bukan "bisa", "percuma" bukan "gratis", "tekan"/"klik" bukan "ketik", "taip" bukan "ketik", "telefon" bukan "HP/ponsel", "pautan" bukan "tautan"). Santai, mesra ibu bapa Malaysia. Campuran sedikit English dibenarkan jika natural.
 - JANGAN reka testimoni, ulasan, nama pelanggan, statistik atau angka jualan palsu. Jangan dakwa "1000 ibu bapa sudah beli" kecuali angka itu ada dalam data.
 - JANGAN janji keputusan pasti ("dijamin boleh baca dalam 7 hari"). Guna bahasa realistik ("ramai anak mula lancar bila konsisten 10 minit sehari").
 - JANGAN dakwa produk merawat/menyembuhkan autisme, disleksia atau apa-apa keadaan. Hanya "mesra" / "ada mod khas untuk".
