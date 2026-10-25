@@ -11,6 +11,7 @@
   <!-- Three.js CDN untuk Grafik Latar Belakang -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg1: #0f172a;
@@ -411,6 +412,46 @@
     #whoBtn { color: #1d3b2a; background: rgba(255,255,255,.75); border-radius: 20px; padding: 6px 14px; font-weight: 700; font-size: 15px; }
     #certOv .sbox { text-align: center; align-items: center; }
     #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #2b2350; color: #fff; padding: 10px 18px; border-radius: 18px; font-weight: 600; z-index: 60; display: none; max-width: 90vw; text-align: center; }
+
+    /* ===== v2: mod ketik, soalan, fon, latar, rehat, onboarding, ujian ===== */
+    #tapBox { display: none; width: 100%; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+    #tapBox.on { display: grid; }
+    #tapBox.one { grid-template-columns: 1fr; }
+    #tapBox.two { grid-template-columns: repeat(2, 1fr); }
+    .tapo { background: #fff; color: #2b2350; border: 3px solid #e3dcff; box-shadow: 0 5px 0 #d4caff; border-radius: 18px; padding: 14px 8px; font: 700 26px/1.2 Fredoka, system-ui, sans-serif; cursor: pointer; transition: transform .12s; }
+    #tapBox.one .tapo { font-size: 19px; padding: 12px; }
+    .tapo:active { transform: translateY(3px); box-shadow: 0 2px 0 #d4caff; }
+    .tapo.correct { background: #34d399; color: #0f172a; border-color: #34d399; }
+    .tapo.wrong { background: #f43f5e; color: #fff; border-color: #f43f5e; animation: shake .4s; }
+    #word.mcq { font-size: min(5.6vw, 26px); line-height: 1.45; letter-spacing: .3px; text-shadow: none; }
+    #word.mcq .psg { display: block; font-weight: 600; margin-bottom: 8px; }
+    #word.mcq .qst { display: block; color: #2f7df6; font-weight: 700; }
+    body.f-lexend #word, body.f-lexend .tapo, body.f-lexend .q-opt, body.f-lexend #msg, body.f-lexend #clue, body.f-lexend .flw, body.f-lexend .plw { font-family: Lexend, system-ui, sans-serif; }
+    body.f-atk #word, body.f-atk .tapo, body.f-atk .q-opt, body.f-atk #msg, body.f-atk #clue, body.f-atk .flw, body.f-atk .plw { font-family: "Atkinson Hyperlegible", system-ui, sans-serif; }
+    body.bg-cream #stage { background: #fdf5e2; } body.bg-blue #stage { background: #e6f2ff; } body.bg-yellow #stage { background: #fff7cc; }
+    .srow { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 16px; }
+    .srow select { font: inherit; font-size: 15px; padding: 6px 8px; border-radius: 10px; border: 2px solid #e3dcff; max-width: 60%; }
+    .lc.c6 { background: linear-gradient(160deg,#7fd6ff,#1f9bd1); } .sec-t.c6 { --dot: #1f9bd1; }
+    .lc.c7 { background: linear-gradient(160deg,#ffd27a,#e39a12); } .sec-t.c7 { --dot: #e39a12; }
+    .lc.c8 { background: linear-gradient(160deg,#9be38f,#3aa85a); } .sec-t.c8 { --dot: #3aa85a; }
+    #restOv .sbox, #onbOv .sbox, #plOv .sbox, #flOv .sbox { text-align: center; align-items: center; }
+    #restOv .moon { font-size: 96px; line-height: 1; }
+    .chips { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .chip2 { background: #f6f3ff; border: 3px solid #fff; border-radius: 16px; padding: 12px 14px; font-weight: 600; font-size: 16px; color: #2b2350; text-align: left; box-shadow: 0 3px 0 #e3dcff; }
+    .chip2 small { display: block; font-weight: 400; opacity: .75; font-size: 13px; }
+    .chip2.sel { background: #fff3c4; border-color: #ffd566; box-shadow: 0 3px 0 #f5a000; }
+    .plw { font: 700 min(13vw, 64px)/1.2 Fredoka, sans-serif; margin: 6px 0; }
+    .plstep { font-size: 14px; opacity: .7; }
+    #flGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; }
+    .flw { background: #fff; border: 2px solid #e3dcff; border-radius: 10px; padding: 8px 2px; font: 700 18px/1.2 Fredoka, sans-serif; color: #2b2350; }
+    .flw.err { background: #ffe1e6; border-color: #ef3f5c; color: #c0223f; text-decoration: line-through; }
+    .flw.last { background: #d7f7e6; border-color: #17b26a; }
+    #flTime { font: 700 44px/1 Fredoka, sans-serif; color: #2f7df6; }
+    .flbars { display: flex; align-items: flex-end; gap: 6px; height: 90px; margin-top: 8px; }
+    .flbars div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: 11px; gap: 2px; }
+    .flbars i { display: block; width: 100%; background: linear-gradient(180deg,#9be38f,#17b26a); border-radius: 6px 6px 2px 2px; min-height: 2px; }
+    #setp { overflow-y: auto; align-items: flex-start; } #setp .sbox { margin: auto 0; }
+    #gateOv { z-index: 55; }
   </style>
 </head>
 <body>
@@ -519,9 +560,14 @@
     <label><input type="checkbox" id="s_acc"><span>Terima cubaan selepas 3 kali tersasar<small>Bunyi apa pun yang dicuba dikira berjaya (pengukuhan cubaan).</small></span></label>
     <label><input type="checkbox" id="s_sch"><span>Jadual visual Dulu → Kemudian<small>Setiap 5 perkataan, anak nampak ganjaran pilihannya.</small></span></label>
     <div style="font-weight:600">Profil cepat (boleh pilih kedua-duanya):</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="qz-btn" id="p_aut" style="padding:8px 14px">🧩 Autisme (tenang)</button><button class="qz-btn" id="p_dys" style="padding:8px 14px">📖 Disleksia (baca dulu)</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="qz-btn" id="p_aut" style="padding:8px 14px">🧩 Autisme (tenang)</button><button class="qz-btn" id="p_dys" style="padding:8px 14px">📖 Disleksia</button><button class="qz-btn" id="p_tap" style="padding:8px 14px">🤫 Belum bertutur</button></div>
     <label><input type="checkbox" id="s_rf"><span>Mod Baca Dulu<small>Gambar dan sebutan disembunyikan. Anak membaca sendiri dahulu; bantuan muncul selepas tersilap.</small></span></label>
     <label><input type="checkbox" id="s_big"><span>Huruf besar dan jarak luas<small>Ketik huruf atau suku kata untuk dengar bunyinya.</small></span></label>
+    <label><input type="checkbox" id="s_tap"><span>Mod Ketik Jawapan<small>Untuk anak yang belum bertutur atau sebutan belum jelas: anak dengar, kemudian ketik jawapan. Mikrofon tidak digunakan.</small></span></label>
+    <div class="srow"><b>Fon</b><select id="s_font"><option value="">Biasa (Fredoka)</option><option value="atk">Atkinson Hyperlegible (b, d, p jelas)</option><option value="lexend">Lexend (mudah dibaca)</option></select></div>
+    <div class="srow"><b>Warna latar</b><select id="s_bg"><option value="">Putih</option><option value="cream">Krim</option><option value="blue">Biru lembut</option><option value="yellow">Kuning lembut</option></select></div>
+    <div class="srow"><b>Kelajuan suara</b><select id="s_rate"><option value="0.75">Perlahan</option><option value="1">Biasa</option><option value="1.15">Laju</option></select></div>
+    <div class="srow"><b>Pemasa rehat</b><select id="s_timer"><option value="0">Tiada</option><option value="5">5 minit</option><option value="10">10 minit</option><option value="15">15 minit</option><option value="20">20 minit</option></select></div>
     <div style="font-weight:600">Ganjaran "Kemudian":</div><div id="s_rw"></div>
     <div id="s_weak" style="font-size:14px"></div>
     <button class="big" id="s_ok">Simpan</button></div></div>
@@ -534,12 +580,13 @@
     <h2>Buka Jom Baca Pro</h2>
     <p class="psub" id="paySub">Teruskan perjalanan anak sampai boleh baca cerita sendiri.</p>
     <ul class="plist">
-      <li>✅ <b>28 tahap lagi</b>: suku kata → perkataan → imbuhan → ayat → cerita (290+ item)</li>
+      <li>✅ <b><span data-jb="pro_n">34</span> tahap lagi</b>: suku kata KV → KVK → KVKK → bunyi khas → imbuhan → ayat → pemahaman (<span data-jb="items">360</span>+ item)</li>
       <li>✅ <b>Pek cerita baharu setiap minggu</b>, percuma seumur hidup</li>
       <li>✅ <b>Misi Harian 10 minit</b> + laporan kemajuan untuk ibu bapa</li>
       <li>✅ <b>Pusat Cetak</b>: kad imbas, lembaran kerja, sijil (cetak tanpa had)</li>
       <li>✅ Sehingga <b>5 profil anak</b> · 5 peranti · boleh guna offline</li>
-      <li>✅ Mod Autisme &amp; Disleksia</li>
+      <li>✅ Mod Autisme, Disleksia &amp; <b>Ketik Jawapan</b> untuk anak belum bertutur</li>
+      <li>✅ <b>Ujian penempatan</b> &amp; <b>ujian kelancaran 1 minit</b> dengan graf kemajuan</li>
     </ul>
     <div class="price"><b id="payPrice">RM20</b><small>sekali bayar · akses seumur hidup · tiada langganan</small></div>
     <button class="big" id="payBuy">Dapatkan Pro sekarang</button>
@@ -596,6 +643,51 @@
   </div></div>
   <div id="toast"></div>
 
+  <!-- ===== v2 overlay ===== -->
+  <div id="restOv" class="ov"><div class="sbox">
+    <div class="moon">🌙</div>
+    <h2>Masa rehat!</h2>
+    <p id="restMsg" style="margin:0;font-size:18px">Hebat! Kita sambung lagi nanti.</p>
+    <button class="big" id="restDone">Selesai untuk sekarang</button>
+    <button class="link" id="restMore" style="color:#2b2350">👨‍👩‍👧 Ibu bapa: sambung lagi</button>
+  </div></div>
+
+  <div id="onbOv" class="ov"><div class="sbox">
+    <div style="font-size:54px;line-height:1">👋</div>
+    <h2>Selamat datang ke Jom Baca!</h2>
+    <div id="onb1" style="width:100%;display:flex;flex-direction:column;gap:10px">
+      <label class="f" style="font-weight:700;text-align:left">Nama anak</label>
+      <input id="onbName" class="pin" style="text-transform:none" maxlength="20" placeholder="cth: Aisyah">
+      <div style="font-weight:700;text-align:left;margin-top:4px">Pilih yang paling sesuai untuk anak:</div>
+      <div class="chips" id="onbModes">
+        <button class="chip2 sel" data-m="biasa">😊 Biasa<small>Semua animasi, bunyi dan gambar.</small></button>
+        <button class="chip2" data-m="autisme">🧩 Autisme<small>Mod tenang, tiada bunyi salah, jadual Dulu → Kemudian, rehat setiap 10 minit.</small></button>
+        <button class="chip2" data-m="disleksia">📖 Disleksia<small>Fon jelas (b, d, p mudah dibeza), huruf besar, latar krim, suara perlahan.</small></button>
+        <button class="chip2" data-m="kedua">🧩📖 Autisme + Disleksia<small>Gabungan kedua-dua tetapan.</small></button>
+        <button class="chip2" data-m="ketik">🤫 Belum bertutur / sebutan belum jelas<small>Anak dengar, kemudian ketik jawapan. Tanpa mikrofon.</small></button>
+      </div>
+      <button class="big" id="onbNext">Seterusnya</button>
+    </div>
+    <div id="onb2" style="display:none;width:100%;flex-direction:column;gap:12px">
+      <p style="margin:0;font-size:17px">Anak sudah kenal huruf atau boleh membaca sedikit?<br><b>Ujian penempatan 2 minit</b> akan cari tahap yang paling sesuai.</p>
+      <button class="big" id="onbTest">🧭 Ya, buat ujian penempatan</button>
+      <button class="btn2 alt" id="onbSkip">Mula dari awal (Tahap 1)</button>
+      <p class="muted" style="margin:0">Semua tetapan boleh diubah dalam Ruang Ibu Bapa.</p>
+    </div>
+  </div></div>
+
+  <div id="plOv" class="ov"><div class="sbox">
+    <button class="x" data-close="plOv" aria-label="Tutup">✕</button>
+    <h2>🧭 Ujian Penempatan</h2>
+    <div id="plBody" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:10px"></div>
+  </div></div>
+
+  <div id="flOv" class="ov"><div class="sbox" style="max-width:560px">
+    <button class="x" data-close="flOv" aria-label="Tutup">✕</button>
+    <h2>⏱️ Ujian Kelancaran 1 Minit</h2>
+    <div id="flBody" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:10px"></div>
+  </div></div>
+
 
   <script>
     /* Storan ikut profil anak (p<ID>:kunci). Data lama dipindah ke profil 1. */
@@ -646,7 +738,8 @@
 
     /* KURIKULUM LENGKAP */
     /* KURIKULUM: 3 tahap percuma di sini; 28 tahap Pro dimuat dari server selepas lesen aktif */
-    const LV = [["Vokal", "Vowels", "🔤", ["a|🐔|a untuk ayam|a-yam", "i|🐟|i untuk ikan|i-kan", "u|🐍|u untuk ular|u-lar", "e|🍎|e untuk epal|e-pal", "o|🍊|o untuk oren|o-ren"]], ["Suku kata A (1)", "Syllables A (1)", "🔡", ["ba|🧺|ba untuk bakul|ba-kul", "ca|☕|ca untuk cawan|ca-wan", "da|🍃|da untuk daun|da-un", "fa|📁|fa untuk fail|fa-il", "ga|🐘|ga untuk gajah|ga-jah", "ha|🐯|ha untuk harimau|ha-ri-ma-u", "ja|☝️|ja untuk jari|ja-ri", "ka|👟|ka untuk kasut|ka-sut", "la|🪰|la untuk lalat|la-lat"]], ["Suku kata A (2)", "Syllables A (2)", "🔠", ["ma|👁️|ma untuk mata|ma-ta", "na|🍍|na untuk nanas|na-nas", "pa|☂️|pa untuk payung|pa-yung", "ra|👑|ra untuk raja|ra-ja", "sa|🥬|sa untuk sayur|sa-yur", "ta|✋|ta untuk tangan|ta-ngan", "wa|🪁|wa untuk wau|wa-u"]]].concat([["Suku kata I (1)", "Syllables I (1)", "🔡", [], {"pro": 1, "n": 8}], ["Suku kata I (2)", "Syllables I (2)", "🔠", [], {"pro": 1, "n": 8}], ["Suku kata U (1)", "Syllables U (1)", "🔡", [], {"pro": 1, "n": 8}], ["Suku kata U (2)", "Syllables U (2)", "🔠", [], {"pro": 1, "n": 8}], ["Suku kata E (1)", "Syllables E (1)", "🔡", [], {"pro": 1, "n": 8}], ["Suku kata E (2)", "Syllables E (2)", "🔠", [], {"pro": 1, "n": 7}], ["Suku kata O (1)", "Syllables O (1)", "🔡", [], {"pro": 1, "n": 8}], ["Suku kata O (2)", "Syllables O (2)", "🔠", [], {"pro": 1, "n": 8}], ["Ulang kaji suku kata", "Syllable review", "🔁", [], {"pro": 1, "n": 20}], ["Dua suku kata (1)", "Two syllables 1", "🧩", [], {"pro": 1, "n": 10}], ["Dua suku kata (2)", "Two syllables 2", "🧩", [], {"pro": 1, "n": 12}], ["Dua suku kata (3)", "Two syllables 3", "🧩", [], {"pro": 1, "n": 12}], ["Huruf mati", "Closed syllables", "🚌", [], {"pro": 1, "n": 12}], ["Dua suku kata tertutup", "Closed 2nd syllable", "🚢", [], {"pro": 1, "n": 11}], ["Tiga suku kata", "Three syllables (16 words)", "🚗", [], {"pro": 1, "n": 16}], ["Vokal di depan", "Vowel start", "🐔", [], {"pro": 1, "n": 12}], ["ng ny kh", "Special letters", "🌸", [], {"pro": 1, "n": 10}], ["Diftong ai au", "Diphthongs", "🏖️", [], {"pro": 1, "n": 6}], ["Kata Kerja Asas (1)", "Basic Verbs 1", "🏃", [], {"pro": 1, "n": 8}], ["Kata Kerja Asas (2)", "Basic Verbs 2", "✍️", [], {"pro": 1, "n": 8}], ["Imbuhan ber-", "Prefix ber- (Verbs)", "🚶‍♂️", [], {"pro": 1, "n": 8}], ["Imbuhan me- / mem-", "Prefix me- (Verbs)", "👩‍🍳", [], {"pro": 1, "n": 8}], ["Imbuhan meng- / meny-", "Prefix meng-, meny-, ter-", "🧹", [], {"pro": 1, "n": 8}], ["Ayat pendek", "Short sentences", "📖", [], {"pro": 1, "n": 8}], ["Ayat gabungan", "Combined phrases", "📚", [], {"pro": 1, "n": 6}], ["Ayat lengkap", "Full sentences", "🏡", [], {"pro": 1, "n": 10}], ["Cerita 2 Ayat", "2-Sentence Stories", "📗", [], {"pro": 1, "n": 8}], ["Cerita 3 Ayat", "3-Sentence Stories", "📘", [], {"pro": 1, "n": 6}]]);
+    const LV = [["Huruf vokal", "Vowels", "🔤", ["a|🐔|a untuk ayam|a-yam", "i|🐟|i untuk ikan|i-kan", "u|🐍|u untuk ular|u-lar", "e|🍎|e untuk epal|e-pal", "o|🍊|o untuk oren|o-ren"]], ["Huruf kecil (1)", "Small letters 1", "🔡", ["b|⚽|b untuk bola|bo-la", "c|☕|c untuk cawan|ca-wan", "d|🎲|d untuk dadu|da-du", "f|📁|f untuk fail|fa-il", "g|🐘|g untuk gajah|ga-jah", "h|🐯|h untuk harimau|ha-ri-mau", "j|☝️|j untuk jari|ja-ri", "k|🐴|k untuk kuda|ku-da", "l|🕯️|l untuk lilin|li-lin"]], ["Huruf kecil (2)", "Small letters 2", "🔡", ["m|👁️|m untuk mata|ma-ta", "n|🍍|n untuk nanas|na-nas", "p|☂️|p untuk payung|pa-yung", "r|🏠|r untuk rumah|ru-mah", "s|🥛|s untuk susu|su-su", "t|🎩|t untuk topi|to-pi", "w|🪁|w untuk wau|wau", "y|🦈|y untuk yu|yu", "z|🦒|z untuk zirafah|zi-ra-fah"]], ["Huruf besar", "Capital letters", "🔠", ["A|🐔|A besar, a kecil|a-yam", "B|⚽|B besar, b kecil|bo-la", "C|☕|C besar, c kecil|ca-wan", "I|🐟|I besar, i kecil|i-kan", "K|🐴|K besar, k kecil|ku-da", "M|👁️|M besar, m kecil|ma-ta", "S|🥛|S besar, s kecil|su-su", "U|🐍|U besar, u kecil|u-lar"]], ["Huruf keliru: b d p", "Tricky letters b d p", "🔍", ["b|⚽|b untuk bola|bo-la", "d|🎲|d untuk dadu|da-du", "p|☂️|p untuk payung|pa-yung", "b|📕|b untuk buku|bu-ku", "d|🦖|d untuk dinosaur|di-no-sa-ur", "p|🍌|p untuk pisang|pi-sang", "m|👁️|m untuk mata|ma-ta", "n|🍍|n untuk nanas|na-nas"]], ["Suku kata KV: a", "Syllables CV: a", "🅰️", ["ba|🧺|ba untuk bakul|ba-kul", "ca|☕|ca untuk cawan|ca-wan", "da|🍃|da untuk daun|da-un", "ga|🐘|ga untuk gajah|ga-jah", "ka|👟|ka untuk kasut|ka-sut", "la|🪰|la untuk lalat|la-lat", "ma|👁️|ma untuk mata|ma-ta", "na|🍍|na untuk nanas|na-nas", "pa|☂️|pa untuk payung|pa-yung", "ra|👑|ra untuk raja|ra-ja", "sa|🥬|sa untuk sayur|sa-yur", "ta|✋|ta untuk tangan|ta-ngan"]]].concat([["Suku kata KV: i", "Syllables CV: i", "ℹ️", [], {"pro": 1, "n": 12}], ["Suku kata KV: u", "Syllables CV: u", "⛎", [], {"pro": 1, "n": 13}], ["Suku kata KV: e", "Syllables CV: e", "📧", [], {"pro": 1, "n": 12}], ["Suku kata KV: o", "Syllables CV: o", "⭕", [], {"pro": 1, "n": 14}], ["Perkataan KV+KV (1)", "CV+CV words 1", "🧩", [], {"pro": 1, "n": 10}], ["Perkataan KV+KV (2)", "CV+CV words 2", "🧩", [], {"pro": 1, "n": 12}], ["Perkataan KV+KV (3)", "CV+CV words 3", "🧩", [], {"pro": 1, "n": 12}], ["Main bunyi", "Sound games", "👂", [], {"pro": 1, "n": 9}], ["Perkataan V+KV", "V+CV words", "🔥", [], {"pro": 1, "n": 5}], ["Perkataan KV+KV+KV", "CV+CV+CV words", "🚗", [], {"pro": 1, "n": 10}], ["Perkataan KVK", "CVC words", "🚌", [], {"pro": 1, "n": 12}], ["Suku kata KVK", "CVC syllables", "🔒", [], {"pro": 1, "n": 12}], ["Perkataan V+KVK", "V+CVC words", "☁️", [], {"pro": 1, "n": 10}], ["Perkataan KV+KVK", "CV+CVC words", "🚢", [], {"pro": 1, "n": 12}], ["Perkataan KVK+KV", "CVC+CV words", "💡", [], {"pro": 1, "n": 8}], ["Perkataan KVK+KVK", "CVC+CVC words", "✂️", [], {"pro": 1, "n": 8}], ["Tiga suku kata dengan KVK", "3 syllables with CVC", "🚲", [], {"pro": 1, "n": 12}], ["Perkataan KVKK", "CVCC words", "🏦", [], {"pro": 1, "n": 4}], ["Perkataan dengan KVKK", "Words with CVCC", "🛂", [], {"pro": 1, "n": 5}], ["Vokal berganding", "Vowel pairs", "💧", [], {"pro": 1, "n": 8}], ["Diftong ai au oi", "Diphthongs", "🏖️", [], {"pro": 1, "n": 9}], ["ng ny kh sy", "Digraphs", "🌸", [], {"pro": 1, "n": 10}], ["Konsonan bergabung", "Consonant blends", "🚜", [], {"pro": 1, "n": 8}], ["Kata Kerja Asas (1)", "Basic Verbs 1", "🏃", [], {"pro": 1, "n": 8}], ["Kata Kerja Asas (2)", "Basic Verbs 2", "✍️", [], {"pro": 1, "n": 8}], ["Imbuhan ber-", "Prefix ber- (Verbs)", "🚶‍♂️", [], {"pro": 1, "n": 8}], ["Imbuhan me- / mem-", "Prefix me- (Verbs)", "👩‍🍳", [], {"pro": 1, "n": 8}], ["Imbuhan meng- / meny-", "Prefix meng-, meny-, ter-", "🧹", [], {"pro": 1, "n": 8}], ["Ayat pendek", "Short sentences", "📖", [], {"pro": 1, "n": 8}], ["Ayat gabungan", "Combined phrases", "📚", [], {"pro": 1, "n": 6}], ["Bina ayat mudah", "Full sentences", "🏡", [], {"pro": 1, "n": 10}], ["Cerita 2 Ayat", "2-Sentence Stories", "📗", [], {"pro": 1, "n": 8}], ["Cerita 3 Ayat", "3-Sentence Stories", "📘", [], {"pro": 1, "n": 6}], ["Bacaan & pemahaman", "Reading comprehension", "🧠", [], {"pro": 1, "n": 6}]]);
+    window.JB_CURR = {"free": 6, "core": 40, "items": 362, "sections": [[0, 5, "Huruf", "c1"], [5, 16, "Suku Kata KV & Perkataan Terbuka", "c2"], [16, 23, "Suku Kata Tertutup (KVK)", "c4"], [23, 25, "Suku Kata KVKK", "c6"], [25, 29, "Bunyi Khas", "c7"], [29, 34, "Kata Kerja & Imbuhan", "c8"], [34, 40, "Ayat, Cerita & Pemahaman", "c3"]]};
 
     let L = 0, idx = 0, ok = 0, fails = 0, eggN = 0, stars = 0, busy = false, coll = [], unl = 0, showG = false, tk = 0;
     let inQuiz = false, qList = [], qIdx = 0, qScore = 0, qBusy = false;
@@ -661,7 +754,13 @@
     const $ = id => document.getElementById(id);
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    function parseMCQ(r) {
+      const p = r.slice(1).split("|"), q = p[0], correct = p[1], wrong = p.slice(2, 4).filter(Boolean);
+      const tgt = correct.toLowerCase().replace(/[^a-z0-9]/g, "") || "x";
+      return { mcq: true, q, correct, opts: [correct, ...wrong], rawText: correct, words: [correct], wordSyllables: [[correct]], parts: [correct], e: p[4] || "❓", c: "", w: "", display: correct, speakText: p[5] || q.replace(/\n/g, ". "), target: tgt };
+    }
     function parseRawItem(r) {
+      if (r[0] === "?") return parseMCQ(r);
       let t, e = "", c = "", w = "";
       if (r.includes("|")) { [t, e, c, w] = r.split("|"); w = w || ""; }
       else {
@@ -745,7 +844,7 @@
             const u = new SpeechSynthesisUtterance(txt);
             const v = getMalayVoice();
             if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = "ms-MY"; }
-            u.rate = txt.length > 25 ? 0.9 : 0.85;
+            u.rate = (txt.length > 25 ? 0.9 : 0.85) * ((typeof CFGS !== "undefined" && CFGS.rate) || 1);
             u.pitch = 1.0;
             u.onend = () => res(); u.onerror = () => res();
             speechSynthesis.speak(u);
@@ -854,7 +953,7 @@
       $("word").className = isLong ? "long-text" : "";
 
       if (it.w) {
-        $("word").innerHTML = `<span class="syl s0" style="margin-right:0">${it.target}</span><span class="syl" style="opacity:.5;margin-left:0">${it.w.replace(/-/g, "").slice(it.target.length)}</span>`;
+        $("word").innerHTML = `<span class="syl s0" style="margin-right:0">${it.rawText}</span><span class="syl" style="opacity:.5;margin-left:0">${it.w.replace(/-/g, "").slice(it.target.length)}</span>`;
       } else {
         let colorIdx = 0;
         const htmlWords = it.wordSyllables.map(sylArr =>
@@ -1131,7 +1230,7 @@
       if (!coll.length) { const n = document.createElement("div"); n.className = "mph"; n.textContent = "Sebut betul 3x untuk 5 perkataan, telur menetas, dapat haiwan baharu! 🥚"; box.appendChild(n); }
     }
     /* Tetapan pembimbing, Mod Tenang, jadual visual */
-    let CFGS = { calm: false, auto: true, accept: false, sched: false, reward: "🧸", readfirst: false, bigtext: false };
+    let CFGS = { calm: false, auto: true, accept: false, sched: false, reward: "🧸", readfirst: false, bigtext: false, tap: false, font: "", bg: "", rate: 1, timer: 0 };
     try { Object.assign(CFGS, JSON.parse(PS.get("cfgs") || "{}")); } catch (e) {}
     let sessionN = 0, pendingThen = false, tmpRw = CFGS.reward;
     function applyCfg() { document.body.classList.toggle("calm", !!CFGS.calm); document.body.classList.toggle("bigtext", !!CFGS.bigtext); renderSched(); }
@@ -1144,9 +1243,9 @@
     function showThen() { $("thenR").textContent = CFGS.reward; $("thenOv").style.display = "flex"; }
     $("thenGo").onclick = () => { $("thenOv").style.display = "none"; next(); renderSched(); };
     function renderRw() { const b = $("s_rw"); b.innerHTML = ""; ["🧸", "🎵", "🍪", "🛝", "📺", "🚗"].forEach(r => { const x = document.createElement("button"); x.className = "mp" + (r === tmpRw ? " sel" : ""); x.textContent = r; x.onclick = () => { tmpRw = r; renderRw(); }; b.appendChild(x); }); }
-    function openSet() { $("s_calm").checked = CFGS.calm; $("s_auto").checked = CFGS.auto; $("s_acc").checked = CFGS.accept; $("s_sch").checked = CFGS.sched; $("s_rf").checked = CFGS.readfirst; $("s_big").checked = CFGS.bigtext; renderWeak(); tmpRw = CFGS.reward; renderRw(); $("setp").style.display = "flex"; }
+    function openSet() { $("s_calm").checked = CFGS.calm; $("s_auto").checked = CFGS.auto; $("s_acc").checked = CFGS.accept; $("s_sch").checked = CFGS.sched; $("s_rf").checked = CFGS.readfirst; $("s_big").checked = CFGS.bigtext; $("s_tap").checked = !!CFGS.tap; $("s_font").value = CFGS.font || ""; $("s_bg").value = CFGS.bg || ""; $("s_rate").value = String(CFGS.rate || 1); $("s_timer").value = String(CFGS.timer || 0); renderWeak(); tmpRw = CFGS.reward; renderRw(); $("setp").style.display = "flex"; }
     $("s_calm").onchange = () => { if ($("s_calm").checked) { $("s_auto").checked = false; $("s_acc").checked = true; $("s_sch").checked = true; } };
-    $("s_ok").onclick = () => { CFGS = { calm: $("s_calm").checked, auto: $("s_auto").checked, accept: $("s_acc").checked, sched: $("s_sch").checked, reward: tmpRw, readfirst: $("s_rf").checked, bigtext: $("s_big").checked }; try { PS.set("cfgs", JSON.stringify(CFGS)); } catch (e) {} $("setp").style.display = "none"; applyCfg(); };
+    $("s_ok").onclick = () => { CFGS = { calm: $("s_calm").checked, auto: $("s_auto").checked, accept: $("s_acc").checked, sched: $("s_sch").checked, reward: tmpRw, readfirst: $("s_rf").checked, bigtext: $("s_big").checked, tap: $("s_tap").checked, font: $("s_font").value, bg: $("s_bg").value, rate: +$("s_rate").value || 1, timer: +$("s_timer").value || 0 }; try { PS.set("cfgs", JSON.stringify(CFGS)); } catch (e) {} $("setp").style.display = "none"; applyCfg(); };
     $("setBtn").onclick = openSet; $("setBtn2").onclick = openSet;
     /* Disleksia: Baca Dulu, ketik suku kata, ulang kaji pintar */
     let BASE_LV = LV.length;
@@ -1167,8 +1266,9 @@
       LV.push(["Ulang kaji pintar", "Smart review", "🧠", items]); L = LV.length - 1; idx = 0; $("map").style.display = "none"; show();
     };
     $("word").onclick = e => { const sp = e.target.closest(".syl"); if (!sp || inQuiz) return; const t = sp.textContent.replace(/[^a-z]/g, ""); if (t) playOne(t, T(t)); };
-    $("p_aut").onclick = () => { $("s_calm").checked = true; $("s_auto").checked = false; $("s_acc").checked = true; $("s_sch").checked = true; };
-    $("p_dys").onclick = () => { $("s_rf").checked = true; $("s_big").checked = true; };
+    $("p_aut").onclick = () => { $("s_calm").checked = true; $("s_auto").checked = false; $("s_acc").checked = true; $("s_sch").checked = true; $("s_timer").value = "10"; };
+    $("p_dys").onclick = () => { $("s_big").checked = true; $("s_font").value = "atk"; $("s_bg").value = "cream"; $("s_rate").value = "0.75"; };
+    $("p_tap").onclick = () => { $("s_tap").checked = true; $("s_auto").checked = false; $("s_acc").checked = true; };
     applyCfg();
     renderMascot();
     $("startMas").innerHTML = MONKEY; $("go2").onclick = () => startApp(true);
@@ -1182,8 +1282,9 @@
   /* ===== JOM BACA PRO: lesen, pek kandungan, profil, misi harian, ruang ibu bapa, pusat cetak, telemetri ===== */
   (function () {
     const API = location.protocol.indexOf("http") === 0 ? location.origin : "";
-    const CORE_N = 31, FREE_N = 3, MAX_PROF = 5;
-    const SECTIONS = [[0, 12, "Bunyi & Suku Kata", "c1"], [12, 21, "Perkataan", "c2"], [21, 26, "Kata Kerja & Imbuhan", "c4"], [26, 31, "Ayat & Cerita", "c3"]];
+    const CUR = window.JB_CURR || { free: 3, core: 31, sections: [] };
+    const CORE_N = CUR.core, FREE_N = CUR.free, MAX_PROF = 5;
+    const SECTIONS = CUR.sections;
     const lsg = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
     const lss = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
     const lsd = k => { try { localStorage.removeItem(k); } catch (e) {} };
@@ -1340,7 +1441,7 @@
       $("maMis").onclick = startMission; $("maWho").onclick = () => openGate(); $("maPar").onclick = () => openGate(); $("maPrint").onclick = () => openGate("print");
       if (!isPro()) {
         const b = document.createElement("button"); b.className = "probar";
-        b.innerHTML = `<b>👑</b><span>Anda guna versi percuma (3 tahap). Buka 28 tahap lagi, pek cerita mingguan &amp; pusat cetak. <u>Lihat Pro</u></span>`;
+        b.innerHTML = `<b>👑</b><span>Anda guna versi percuma (${FREE_N} tahap). Buka ${CORE_N - FREE_N} tahap lagi, pek cerita mingguan &amp; pusat cetak. <u>Lihat Pro</u></span>`;
         b.onclick = () => openPay("map_bar"); g.appendChild(b);
       }
       const secs = SECTIONS.concat(BASE_LV > CORE_N ? [[CORE_N, BASE_LV, "Pek Cerita Baharu ✨", "c5"]] : []);
@@ -1395,8 +1496,9 @@
     }
     const gateGo = () => {
       if (+$("gateA").value !== gateAns) { $("gateMsg").textContent = "Jawapan salah. Cuba lagi."; return; }
-      $("gateOv").classList.remove("on"); openParent(gateNext);
+      $("gateOv").classList.remove("on"); if (typeof gateNext === "function") gateNext(); else openParent(gateNext);
     };
+    JB.openGate = openGate;
     $("gateOk").onclick = gateGo; $("gateA").onkeydown = e => { if (e.key === "Enter") gateGo(); };
 
     /* ---------- Ruang Ibu Bapa ---------- */
@@ -1432,14 +1534,14 @@
       if (!tips.length) tips.push("Teruskan rutin. Konsisten sedikit setiap hari lebih berkesan daripada lama sekali-sekala.");
       $("pTips").innerHTML = tips.map(t => "<li>" + t + "</li>").join("");
       const opts = []; const maxI = isPro() ? BASE_LV : FREE_N;
-      for (let i = 0; i < Math.min(maxI, LV.length); i++) if (LV[i][3].length) opts.push(`<option value="${i}"${i === Math.min(unl, maxI - 1) ? " selected" : ""}>Tahap ${i + 1}: ${esc(LV[i][0])}</option>`);
+      for (let i = 0; i < Math.min(maxI, LV.length); i++) if (LV[i][3].length && LV[i][3][0][0] !== "?") opts.push(`<option value="${i}"${i === Math.min(unl, maxI - 1) ? " selected" : ""}>Tahap ${i + 1}: ${esc(LV[i][0])}</option>`);
       $("prLevel").innerHTML = opts.join("");
       $("prNote").textContent = isPro() ? "Pilih tahap, kemudian pilih bahan. Simpan sebagai PDF atau cetak terus." : "Versi percuma: bahan cetak untuk 3 tahap pertama. Pro membuka semua tahap.";
       if (isPro()) {
         $("pLic").innerHTML = `<h3>👑 Jom Baca Pro aktif</h3><div class="muted">Berlesen kepada: <b>${esc(LIC.name || "-")}</b> · Kod: ${esc(LIC.key.slice(0, 8))}••••</div><div class="row" style="margin-top:8px"><button class="btn2 alt" id="pSync">🔄 Semak kandungan baharu</button></div>`;
         $("pSync").onclick = async () => { toast("Menyemak…"); await refreshPack(); toast("✓ Kandungan terkini"); renderParent(); };
       } else {
-        $("pLic").innerHTML = `<h3>👑 Naik taraf ke Pro</h3><div class="muted">28 tahap lagi, pek cerita mingguan, pusat cetak penuh, 5 profil.</div><div class="row" style="margin-top:8px"><button class="btn2 grn" id="pBuy">Lihat Pro</button><button class="btn2 alt" id="pAct">Saya ada kod lesen</button></div>`;
+        $("pLic").innerHTML = `<h3>👑 Naik taraf ke Pro</h3><div class="muted">${CORE_N - FREE_N} tahap lagi, pek cerita mingguan, pusat cetak penuh, ujian kelancaran, 5 profil.</div><div class="row" style="margin-top:8px"><button class="btn2 grn" id="pBuy">Lihat Pro</button><button class="btn2 alt" id="pAct">Saya ada kod lesen</button></div>`;
         $("pBuy").onclick = () => { $("parOv").classList.remove("on"); openPay("parent"); };
         $("pAct").onclick = () => { $("parOv").classList.remove("on"); openPay("parent_act"); $("actBox").open = true; };
       }
@@ -1449,6 +1551,7 @@
         $("pAff").innerHTML = `<h3>💸 Kongsi &amp; dapat komisen</h3><p class="muted" style="margin-top:0">Setiap kawan yang beli melalui pautan anda, anda dapat komisen. Semak di papan affiliate.</p><div class="afflink">${esc(link)}</div><div class="row" style="margin-top:8px"><button class="btn2" id="pCopy">Salin pautan</button><a class="btn2 grn" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent("Anak saya belajar membaca guna Jom Baca! 10 minit sehari, suku kata demi suku kata. Cuba percuma: " + link)}">Kongsi WhatsApp</a><a class="btn2 alt" style="text-decoration:none" href="${API}/affiliate?code=${encodeURIComponent(LIC.aff)}&k=${encodeURIComponent(LIC.affk || "")}">Papan affiliate</a></div>`;
         $("pCopy").onclick = () => { try { navigator.clipboard.writeText(link); toast("✓ Pautan disalin"); } catch (e) {} };
       } else $("pAff").style.display = "none";
+      if (JB.onParent) JB.onParent();
     }
     $("pAdd").onclick = () => {
       const n = $("pNewName").value.trim().slice(0, 20); if (!n) { $("pNewName").focus(); return; }
@@ -1573,6 +1676,254 @@
       history.replaceState(null, "", location.pathname);
       activate(qk).then(r => { if (r.ok) { toast("👑 Jom Baca Pro diaktifkan!"); setTimeout(() => location.reload(), 1200); } else { openPay("magic_fail"); $("actBox").open = true; $("actKey").value = qk; $("actMsg").textContent = r.msg; } });
     } else if (isPro()) setTimeout(refreshPack, 1500);
+  })();
+  </script>
+
+  <script>
+  /* ===== JOM BACA v2: mod ketik jawapan, soalan pilihan, fon & latar, pemasa rehat, onboarding, ujian penempatan & kelancaran ===== */
+  (function () {
+    const CUR = window.JB_CURR;
+    const ev = (n, d) => { try { JB.ev(n, d); } catch (e) {} };
+    const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
+    const COLS = ["#ef3f5c", "#2f7df6", "#17b26a"];
+    const colored = w => w.split(" ").map(word => word.split("-").map((s, i) => `<span style="color:${COLS[i % 3]}">${esc(s)}</span>`).join("")).join(" ");
+    const dkey = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+
+    document.querySelectorAll("[data-jb=pro_n]").forEach(e => e.textContent = CUR.core - CUR.free);
+    document.querySelectorAll("[data-jb=items]").forEach(e => e.textContent = Math.floor(CUR.items / 10) * 10);
+
+    /* ---------- Fon & warna latar ---------- */
+    const _ac = applyCfg;
+    applyCfg = function () {
+      _ac();
+      const b = document.body.classList;
+      b.toggle("f-lexend", CFGS.font === "lexend"); b.toggle("f-atk", CFGS.font === "atk");
+      ["cream", "blue", "yellow"].forEach(c => b.toggle("bg-" + c, CFGS.bg === c));
+    };
+    applyCfg();
+
+    /* ---------- Mod ketik jawapan & soalan pilihan ---------- */
+    const tb = document.createElement("div"); tb.id = "tapBox"; $("word").insertAdjacentElement("afterend", tb);
+    const labelOf = it => it.mcq ? it.correct : (it.w ? it.rawText : it.display);
+    function distractors(it, n) {
+      const mine = labelOf(it), out = [], longMine = mine.length > 14;
+      const pools = [LV[L] && LV[L][3], L > 0 && LV[L - 1][3], LV[L + 1] && LV[L + 1][3]].filter(p => p && p.length);
+      for (const pool of pools) for (const r of shuffle(pool.slice())) {
+        if (r[0] === "?") continue;
+        const lb = labelOf(parseRawItem(r));
+        if (lb !== mine && !out.includes(lb) && (lb.length > 14) === longMine) out.push(lb);
+        if (out.length >= n) return out;
+      }
+      return out;
+    }
+    let tapLock = false;
+    function renderTap() {
+      const it = item(); tapLock = false;
+      const opts = it.mcq ? shuffle(it.opts.slice()) : shuffle([labelOf(it), ...distractors(it, 2)]);
+      tb.className = "on" + (opts.some(o => o.length > 10) ? " one" : opts.length === 2 ? " two" : "");
+      tb.innerHTML = "";
+      const right = it.mcq ? it.correct : labelOf(it);
+      opts.forEach(o => { const b = document.createElement("button"); b.className = "tapo"; b.textContent = o; b.onclick = () => pick(b, o === right, it); tb.appendChild(b); });
+    }
+    function pick(btn, okk, it) {
+      if (tapLock || inQuiz) return; tapLock = true;
+      const atL = L, atI = idx;
+      logT(it.target, ["(ketik) " + btn.textContent], okk);
+      if (okk) {
+        btn.classList.add("correct");
+        if (it.mcq) ok = Math.max(ok, 2);
+        good();
+        if (ok < 3) setTimeout(() => { if (!inQuiz && L === atL && idx === atI) renderTap(); }, 900);
+      } else {
+        btn.classList.add("wrong"); bad(false);
+        setTimeout(() => { btn.classList.remove("wrong"); tapLock = false; }, 800);
+      }
+    }
+    const _show = show;
+    show = function () {
+      _show();
+      const it = item(), tapMode = it.mcq || !!CFGS.tap;
+      $("mic").style.display = tapMode ? "none" : "";
+      if (it.mcq) {
+        const parts = it.q.split("\n"), qst = parts.pop(), psg = parts.join(" ");
+        $("word").className = "mcq";
+        $("word").innerHTML = (psg ? `<span class="psg">${esc(psg)}</span>` : "") + `<span class="qst">${esc(qst)}</span>`;
+        $("clue").textContent = ""; $("gd").textContent = "";
+        setPic(it.e);
+        say(psg ? "Baca cerita 👀 kemudian ketik jawapan 👇" : "Dengar soalan 👂 kemudian ketik jawapan 👇");
+        if (CFGS.readfirst && !psg) setTimeout(demo, 450);
+      } else if (CFGS.tap) {
+        say("Dengar 👂 kemudian ketik jawapan yang betul 👇 (3 kali)");
+      }
+      if (tapMode) renderTap(); else { tb.className = ""; tb.innerHTML = ""; }
+    };
+    const _demo = demo;
+    demo = async function () {
+      const it = !inQuiz && item();
+      if (it && it.mcq) { const my = ++dtok; try { speechSynthesis.cancel(); } catch (e) {} await playOne("", it.speakText); return my === dtok; }
+      return _demo();
+    };
+    $("say").onclick = () => demo(); $("fallback-emoji").onclick = () => demo();
+    let mcqDone = false;
+    const _sq = startQuiz;
+    startQuiz = function () {
+      if (LV[L] && LV[L][3].length && LV[L][3].every(r => r[0] === "?")) { mcqDone = true; finishQuiz(); return; }
+      tb.className = ""; _sq();
+    };
+    $("qzBtn").onclick = () => startQuiz();
+    const _fq2 = finishQuiz;
+    finishQuiz = function () {
+      _fq2(); tb.className = ""; tb.innerHTML = "";
+      if (mcqDone) { $("word").innerHTML = "Tahap selesai! 🎉"; mcqDone = false; }
+    };
+
+    /* ---------- Pemasa rehat ---------- */
+    let sessSec = 0, restShown = false, lastAct = Date.now();
+    ["pointerdown", "keydown"].forEach(e => addEventListener(e, () => { lastAct = Date.now(); }, { passive: true }));
+    setInterval(() => {
+      if (!CFGS.timer || restShown) return;
+      const learning = $("start").style.display === "none" && $("map").style.display !== "flex" && document.visibilityState === "visible" && Date.now() - lastAct < 90000;
+      if (!learning) return;
+      sessSec += 5;
+      if (sessSec >= CFGS.timer * 60) {
+        restShown = true; dtok++; auto = false;
+        try { speechSynthesis.cancel(); } catch (e) {}
+        if (busy) stopSess();
+        $("restMsg").textContent = "Hebat! Kamu sudah belajar " + CFGS.timer + " minit. Rehat dulu, kita sambung lagi nanti.";
+        $("restOv").classList.add("on"); ev("rest");
+      }
+    }, 5000);
+    const endRest = () => { $("restOv").classList.remove("on"); sessSec = 0; restShown = false; };
+    $("restDone").onclick = () => { endRest(); $("start").style.display = "flex"; };
+    $("restMore").onclick = () => JB.openGate(endRest);
+
+    /* ---------- Onboarding ---------- */
+    const PRESET = {
+      biasa: { calm: false, auto: true, accept: false, sched: false, readfirst: false, bigtext: false, tap: false, font: "", bg: "", rate: 1, timer: 0 },
+      autisme: { calm: true, auto: false, accept: true, sched: true, timer: 10 },
+      disleksia: { bigtext: true, font: "atk", bg: "cream", rate: 0.75 },
+      ketik: { tap: true, auto: false, accept: true },
+    };
+    function applyMode(m) {
+      const cfg = Object.assign({}, PRESET.biasa);
+      (m === "kedua" ? ["autisme", "disleksia"] : [m]).forEach(p => Object.assign(cfg, PRESET[p] || {}));
+      Object.assign(CFGS, cfg); PS.set("cfgs", JSON.stringify(CFGS)); applyCfg();
+    }
+    JB.applyMode = applyMode;
+    let onbMode = "biasa";
+    document.querySelectorAll("#onbModes .chip2").forEach(b => b.onclick = () => {
+      document.querySelectorAll("#onbModes .chip2").forEach(x => x.classList.toggle("sel", x === b)); onbMode = b.dataset.m;
+    });
+    function renameProfile(name) {
+      try {
+        const P = JSON.parse(localStorage.getItem("jb_profiles") || "[]"), p = P.find(x => x.id === PS.id);
+        if (p && name) { p.name = name; localStorage.setItem("jb_profiles", JSON.stringify(P)); const w = $("whoBtn"); if (w) w.textContent = p.av + " " + name + " · tukar"; }
+      } catch (e) {}
+    }
+    const profs0 = JSON.parse(localStorage.getItem("jb_profiles") || "[]"), me = profs0.find(x => x.id === PS.id);
+    if (!PS.get("onb") && !(+PS.get("stars")) && !(+PS.get("unl"))) {
+      if (me && !/^Anak \d+$/.test(me.name)) $("onbName").value = me.name;
+      $("onbOv").classList.add("on");
+    }
+    $("onbNext").onclick = () => {
+      renameProfile($("onbName").value.trim().slice(0, 20));
+      applyMode(onbMode); PS.set("onb", "1"); ev("onboard", { m: onbMode });
+      $("onb1").style.display = "none"; $("onb2").style.display = "flex";
+    };
+    $("onbTest").onclick = () => { $("onbOv").classList.remove("on"); startPlacement(); };
+    $("onbSkip").onclick = () => $("onbOv").classList.remove("on");
+
+    /* ---------- Ujian penempatan ---------- */
+    const CHECK = [["Suku kata KV: a", "ba"], ["Perkataan KV+KV (1)", "bo-la"], ["Perkataan KV+KV+KV", "ke-re-ta"], ["Perkataan KVK", "bas"], ["Perkataan KV+KVK", "ku-cing"], ["Perkataan KVK+KVK", "gun-ting"], ["Perkataan KVKK", "bank"], ["Vokal berganding", "la-ut"], ["ng ny kh sy", "bu-nga"], ["Imbuhan ber-", "ber-la-ri"], ["Bina ayat mudah", "saya suka makan roti"]];
+    const lvIdx = n => LV.findIndex(l => l[0] === n);
+    function startPlacement() {
+      let k = 0; ev("placement_start");
+      $("plOv").classList.add("on");
+      const step = () => {
+        if (k >= CHECK.length) return result(Math.max(0, lvIdx("Cerita 2 Ayat")));
+        const [nm, w] = CHECK[k];
+        $("plBody").innerHTML = `<div class="plstep">Perkataan ${k + 1} daripada ${CHECK.length}. Minta anak baca dengan kuat. Jangan bantu.</div><div class="plw">${colored(w)}</div>
+          <div class="row" style="justify-content:center"><button class="btn2 grn" id="plYes">✅ Boleh baca</button><button class="btn2 red" id="plNo">❌ Belum boleh</button></div>`;
+        $("plYes").onclick = () => { k++; step(); };
+        $("plNo").onclick = () => result(k === 0 ? 0 : Math.max(0, lvIdx(nm)));
+      };
+      const result = target => {
+        const proLock = target >= CUR.free && !JB.isPro();
+        $("plBody").innerHTML = `<div style="font-size:48px">🎯</div><p style="margin:0;font-size:18px">Cadangan: mula di <b>Tahap ${target + 1}: ${esc(LV[target][0])}</b></p>
+          ${proLock ? `<p class="muted" style="margin:0">Tahap ini dalam Jom Baca Pro. Versi percuma ada ${CUR.free} tahap pertama.</p>` : ""}
+          <div class="row" style="justify-content:center">${proLock ? `<button class="btn2 grn" id="plPro">👑 Lihat Pro</button><button class="btn2 alt" id="plFree">Guna tahap percuma dulu</button>` : `<button class="big" id="plGo">Mula di sini</button>`}</div>`;
+        ev("placement", { t: target + 1 });
+        const go = t => { if (t > unl) { unl = t; sv(); } $("plOv").classList.remove("on"); if ($("start").style.display !== "none") $("go").click(); else maps(); };
+        if (proLock) { $("plPro").onclick = () => { go(target); JB.openPay("placement"); }; $("plFree").onclick = () => go(Math.min(target, CUR.free - 1)); }
+        else $("plGo").onclick = () => go(target);
+      };
+      step();
+    }
+    JB.startPlacement = startPlacement;
+
+    /* ---------- Ujian kelancaran 1 minit ---------- */
+    function flPool() {
+      const maxI = JB.isPro() ? CUR.core : CUR.free, upto = Math.min(maxI, Math.max(unl + 1, 6), LV.length), words = [];
+      for (let i = 0; i < upto; i++) for (const r of LV[i][3]) {
+        if (r[0] === "?") continue;
+        const it = parseRawItem(r), t = it.w ? it.rawText : it.display;
+        if (/\s/.test(t) || t.length > 12 || words.includes(t)) continue;
+        words.push(t);
+      }
+      return shuffle(words.slice(-60)).slice(0, 40);
+    }
+    function startFluency() {
+      const words = flPool();
+      $("flOv").classList.add("on"); ev("fluency_start");
+      if (words.length < 8) { $("flBody").innerHTML = `<p>Belum cukup perkataan. Habiskan beberapa tahap dahulu.</p>`; return; }
+      let mode = "ready", left = 60, t0 = 0, timer = null; const errs = new Set();
+      const help = { ready: "Anak baca perkataan dari kiri ke kanan, baris demi baris. Ibu bapa ketik perkataan yang <b>salah</b> dibaca.", run: "Ketik perkataan yang salah dibaca…", last: "Masa tamat! Ketik perkataan <b>terakhir</b> yang anak baca." };
+      $("flBody").innerHTML = `<div id="flTime">60</div><p id="flHelp" style="margin:0">${help.ready}</p><div id="flGrid">${words.map((w, i) => `<button class="flw" data-i="${i}">${esc(w)}</button>`).join("")}</div><button class="big" id="flGo">▶ Mula</button>`;
+      const stopToLast = () => { clearInterval(timer); mode = "last"; $("flHelp").innerHTML = help.last; $("flGo").style.display = "none"; };
+      $("flGo").onclick = () => {
+        if (mode === "ready") {
+          mode = "run"; t0 = Date.now(); $("flHelp").innerHTML = help.run; $("flGo").textContent = "⏹ Anak sudah habis baca";
+          timer = setInterval(() => {
+            if (!$("flOv").classList.contains("on")) { clearInterval(timer); return; }
+            left = Math.max(0, 60 - Math.floor((Date.now() - t0) / 1000)); $("flTime").textContent = left;
+            if (!left) stopToLast();
+          }, 250);
+        } else if (mode === "run") stopToLast();
+      };
+      $("flGrid").onclick = e => {
+        const b = e.target.closest(".flw"); if (!b) return; const i = +b.dataset.i;
+        if (mode === "run") { errs.has(i) ? errs.delete(i) : errs.add(i); b.classList.toggle("err"); }
+        else if (mode === "last") {
+          b.classList.add("last");
+          const secs = Math.max(10, Math.min(60, (Date.now() - t0) / 1000)), right = i + 1 - [...errs].filter(x => x <= i).length;
+          const wcpm = Math.max(0, Math.round(right * 60 / secs));
+          const hist = JSON.parse(PS.get("flu") || "[]"), prev = hist.length ? hist[hist.length - 1].w : null;
+          hist.push({ d: dkey(new Date()), w: wcpm }); PS.set("flu", JSON.stringify(hist.slice(-20)));
+          ev("fluency", { w: wcpm });
+          setTimeout(() => {
+            $("flBody").innerHTML = `<div style="font-size:52px">📈</div><div id="flTime">${wcpm}</div><p style="margin:0;font-size:18px">perkataan betul seminit</p>
+              ${prev != null ? `<p style="margin:0">${wcpm > prev ? "🎉 Naik " + (wcpm - prev) + " berbanding ujian lepas (" + prev + ")" : wcpm === prev ? "Sama seperti ujian lepas (" + prev + ")" : "Ujian lepas: " + prev + ". Biasa naik turun, teruskan latihan harian."}</p>` : ""}
+              <p class="muted" style="margin:0">Ulang ujian ini seminggu sekali pada waktu yang sama untuk lihat kemajuan sebenar.</p>
+              <button class="big" id="flClose">Selesai</button>`;
+            $("flClose").onclick = () => $("flOv").classList.remove("on");
+          }, 500);
+        }
+      };
+    }
+    JB.startFluency = startFluency;
+
+    /* ---------- Kad dalam Ruang Ibu Bapa ---------- */
+    JB.onParent = function () {
+      let c = $("pFlu");
+      if (!c) { c = document.createElement("div"); c.className = "pcard"; c.id = "pFlu"; $("pKpis").parentNode.insertAdjacentElement("afterend", c); }
+      const hist = JSON.parse(PS.get("flu") || "[]").slice(-8), mx = Math.max(10, ...hist.map(h => h.w));
+      c.innerHTML = `<h3>📈 Kelancaran &amp; penempatan</h3><p class="muted" style="margin-top:0">Ujian kelancaran 1 minit: berapa perkataan anak baca dengan betul dalam seminit. Buat seminggu sekali.</p>
+        ${hist.length ? `<div class="flbars">${hist.map(h => `<div><span>${h.w}</span><i style="height:${Math.round(100 * h.w / mx)}%"></i><span>${h.d.slice(5)}</span></div>`).join("")}</div>` : `<p class="muted">Belum ada rekod.</p>`}
+        <div class="row" style="margin-top:8px"><button class="btn2" id="pFl">⏱️ Ujian kelancaran</button><button class="btn2 alt" id="pPl">🧭 Ujian penempatan</button></div>`;
+      $("pFl").onclick = () => { $("parOv").classList.remove("on"); startFluency(); };
+      $("pPl").onclick = () => { $("parOv").classList.remove("on"); startPlacement(); };
+    };
   })();
   </script>
 </body>

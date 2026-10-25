@@ -1,0 +1,45 @@
+
+  <!-- ===== v2 overlay ===== -->
+  <div id="restOv" class="ov"><div class="sbox">
+    <div class="moon">🌙</div>
+    <h2>Masa rehat!</h2>
+    <p id="restMsg" style="margin:0;font-size:18px">Hebat! Kita sambung lagi nanti.</p>
+    <button class="big" id="restDone">Selesai untuk sekarang</button>
+    <button class="link" id="restMore" style="color:#2b2350">👨‍👩‍👧 Ibu bapa: sambung lagi</button>
+  </div></div>
+
+  <div id="onbOv" class="ov"><div class="sbox">
+    <div style="font-size:54px;line-height:1">👋</div>
+    <h2>Selamat datang ke Jom Baca!</h2>
+    <div id="onb1" style="width:100%;display:flex;flex-direction:column;gap:10px">
+      <label class="f" style="font-weight:700;text-align:left">Nama anak</label>
+      <input id="onbName" class="pin" style="text-transform:none" maxlength="20" placeholder="cth: Aisyah">
+      <div style="font-weight:700;text-align:left;margin-top:4px">Pilih yang paling sesuai untuk anak:</div>
+      <div class="chips" id="onbModes">
+        <button class="chip2 sel" data-m="biasa">😊 Biasa<small>Semua animasi, bunyi dan gambar.</small></button>
+        <button class="chip2" data-m="autisme">🧩 Autisme<small>Mod tenang, tiada bunyi salah, jadual Dulu → Kemudian, rehat setiap 10 minit.</small></button>
+        <button class="chip2" data-m="disleksia">📖 Disleksia<small>Fon jelas (b, d, p mudah dibeza), huruf besar, latar krim, suara perlahan.</small></button>
+        <button class="chip2" data-m="kedua">🧩📖 Autisme + Disleksia<small>Gabungan kedua-dua tetapan.</small></button>
+        <button class="chip2" data-m="ketik">🤫 Belum bertutur / sebutan belum jelas<small>Anak dengar, kemudian ketik jawapan. Tanpa mikrofon.</small></button>
+      </div>
+      <button class="big" id="onbNext">Seterusnya</button>
+    </div>
+    <div id="onb2" style="display:none;width:100%;flex-direction:column;gap:12px">
+      <p style="margin:0;font-size:17px">Anak sudah kenal huruf atau boleh membaca sedikit?<br><b>Ujian penempatan 2 minit</b> akan cari tahap yang paling sesuai.</p>
+      <button class="big" id="onbTest">🧭 Ya, buat ujian penempatan</button>
+      <button class="btn2 alt" id="onbSkip">Mula dari awal (Tahap 1)</button>
+      <p class="muted" style="margin:0">Semua tetapan boleh diubah dalam Ruang Ibu Bapa.</p>
+    </div>
+  </div></div>
+
+  <div id="plOv" class="ov"><div class="sbox">
+    <button class="x" data-close="plOv" aria-label="Tutup">✕</button>
+    <h2>🧭 Ujian Penempatan</h2>
+    <div id="plBody" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:10px"></div>
+  </div></div>
+
+  <div id="flOv" class="ov"><div class="sbox" style="max-width:560px">
+    <button class="x" data-close="flOv" aria-label="Tutup">✕</button>
+    <h2>⏱️ Ujian Kelancaran 1 Minit</h2>
+    <div id="flBody" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:10px"></div>
+  </div></div>

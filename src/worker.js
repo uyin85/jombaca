@@ -86,7 +86,7 @@ const SEED_VARIANTS = {
   ],
   sub: [
     "Jom Baca! ajar Bahasa Melayu suku kata demi suku kata. Anak sebut, aplikasi dengar dan beri bintang. Sesuai 4 hingga 8 tahun, termasuk anak autisme dan disleksia.",
-    "31 tahap tersusun dari vokal hingga cerita 3 ayat, Misi Harian 10 minit dan laporan kemajuan untuk ibu bapa. Bayar sekali, guna selamanya.",
+    "40 tahap ikut pola suku kata KV, KVK dan KVKK seperti di sekolah, dari huruf hingga soalan pemahaman. Misi Harian 10 minit dan laporan kemajuan untuk ibu bapa. Bayar sekali, guna selamanya.",
   ],
   cta: ["Dapatkan Jom Baca Pro", "Ya, saya mahu anak saya membaca", "Mula sekarang, RM20 sahaja"],
 };
@@ -105,7 +105,7 @@ const SEED_ANGLES = [
 const NURTURE_DEFAULT = [
   { d: 0, s: "Jadual Suku Kata percuma untuk {child} 🎁", b: "<p>Hai {name},</p><p>Terima kasih! Ini <b>Jadual Suku Kata</b> yang boleh dicetak dan ditampal di dinding:</p><p><a href=\"{magnet}\">👉 Buka &amp; cetak Jadual Suku Kata</a></p><p>Cara guna: tunjuk satu baris sehari (contoh: ba, bi, bu, be, bo), sebut bersama-sama, kemudian minta {child} cari suku kata itu dalam buku.</p><p>Nak cuba cara yang lebih seronok? Aplikasi <b>Jom Baca!</b> boleh dicuba percuma, dan ia <i>mendengar</i> anak membaca:</p><p><a href=\"{app}\">👉 Cuba Jom Baca percuma</a></p>" },
   { d: 1, s: "Kenapa anak 'tahu huruf' tapi masih tak boleh membaca?", b: "<p>Hai {name},</p><p>Ramai anak boleh sebut A, B, C tetapi bila jumpa perkataan <i>bola</i>, mereka tersekat. Sebabnya: membaca Bahasa Melayu bergantung pada <b>suku kata</b> (bo + la), bukan nama huruf.</p><p>Sebab itu Jom Baca! bermula dengan vokal, kemudian suku kata KV, baru perkataan dan ayat. Setiap langkah kecil, dan anak dapat bintang setiap kali berjaya.</p><p><a href=\"{app}\">👉 Cuba 3 tahap pertama percuma</a></p>" },
-  { d: 3, s: "Rutin 10 minit yang anak tunggu-tunggu", b: "<p>Hai {name},</p><p>Rahsia anak cepat membaca bukan sesi panjang, tetapi <b>sedikit setiap hari</b>.</p><ul><li>🎯 <b>Misi Hari Ini</b>: 10 minit, campuran item baharu + item yang anak masih lemah</li><li>🔥 Streak harian supaya anak nak sambung esok</li><li>🖨️ Kad imbas, lembaran kerja &amp; sijil untuk dicetak</li><li>👨‍👩‍👧 Laporan kemajuan untuk ibu bapa</li></ul><p>Semua 31 tahap + pek cerita baharu setiap minggu dalam <b>Jom Baca Pro</b>, {price} sekali bayar.</p><p><a href=\"{buy}\">👉 Dapatkan Jom Baca Pro</a></p>" },
+  { d: 3, s: "Rutin 10 minit yang anak tunggu-tunggu", b: "<p>Hai {name},</p><p>Rahsia anak cepat membaca bukan sesi panjang, tetapi <b>sedikit setiap hari</b>.</p><ul><li>🎯 <b>Misi Hari Ini</b>: 10 minit, campuran item baharu + item yang anak masih lemah</li><li>🔥 Streak harian supaya anak nak sambung esok</li><li>🖨️ Kad imbas, lembaran kerja &amp; sijil untuk dicetak</li><li>👨‍👩‍👧 Laporan kemajuan untuk ibu bapa</li></ul><p>Semua 40 tahap + pek cerita baharu setiap minggu dalam <b>Jom Baca Pro</b>, {price} sekali bayar.</p><p><a href=\"{buy}\">👉 Dapatkan Jom Baca Pro</a></p>" },
   { d: 5, s: "Soalan ibu bapa: sesuai untuk anak autisme / disleksia?", b: "<p>Hai {name},</p><p>Ya. Jom Baca! ada <b>Mod Tenang</b> (tanpa animasi &amp; bunyi kuat), <b>jadual visual Dulu → Kemudian</b>, dan <b>Mod Baca Dulu</b> dengan huruf besar untuk disleksia. Ibu bapa juga boleh tandakan jawapan betul sendiri jika anak belum bertutur jelas.</p><p>Suara anak tidak dirakam atau disimpan.</p><p><a href=\"{buy}\">👉 Lihat apa yang ada dalam Pro</a></p>" },
   { d: 7, s: "Kod khas untuk {child}: tamat 48 jam ⏳", b: "<p>Hai {name},</p><p>Sebagai terima kasih kerana mencuba Jom Baca!, ini kod diskaun khas untuk anda:</p><p style=\"font-size:22px\"><b>{coupon}</b></p><p>Kod ini hanya sah selama <b>48 jam</b> dan sekali guna.</p><p><a href=\"{buy_coupon}\">👉 Guna kod sekarang</a></p>" },
 ];
@@ -530,8 +530,8 @@ async function brainState(env, agent) {
   const dim = new Date(Date.UTC(+month.slice(0, 4), +month.slice(5, 7), 0)).getUTCDate();
   return {
     now_myt: new Date(now() + MYT).toISOString().replace("Z", "+08:00"), agent,
-    product: { name: s.brand, price: rm(+s.price_sen), floor: rm(+s.floor_sen), aff_rate_pct: +s.aff_rate_pct, guarantee_days: +s.guarantee_days, site: siteUrl(env, s), levels: 31, items: 290, free_levels: 3,
-      features: ["31 tahap: vokal → suku kata KV → perkataan → huruf mati → ng/ny/kh → diftong → kata kerja → imbuhan ber-/me-/ter- → ayat → cerita 2 & 3 ayat", "Pengecaman suara: anak sebut, app dengar, 3 kali betul = bintang & gambar 3D", "Kuiz dengar & pilih setiap tahap", "Misi Harian 10 minit + streak", "Ruang Ibu Bapa: laporan, minit, ketepatan, item lemah", "Pusat Cetak: kad imbas, lembaran kerja, sijil, laporan, pelan 30 hari", "5 profil anak, 5 peranti, offline (PWA)", "Mod Tenang (autisme), Mod Baca Dulu + huruf besar (disleksia), jadual visual Dulu→Kemudian", "Panduan sebutan Bahasa Inggeris untuk ibu bapa/warga asing", "Pek cerita baharu setiap minggu", "Telur menetas → koleksi haiwan & maskot"] },
+    product: { name: s.brand, price: rm(+s.price_sen), floor: rm(+s.floor_sen), aff_rate_pct: +s.aff_rate_pct, guarantee_days: +s.guarantee_days, site: siteUrl(env, s), levels: CORE.n_levels || 40, items: CORE.n_items || 360, free_levels: CORE.free,
+      features: [`${CORE.n_levels || 40} tahap dalam 7 bahagian, ikut pola suku kata yang digunakan di sekolah Malaysia: huruf (vokal, huruf kecil & besar, huruf keliru b/d/p) → suku kata KV → perkataan terbuka → KVK → KVKK → vokal berganding, diftong, ng/ny/kh/sy, konsonan bergabung → kata kerja & imbuhan → ayat, cerita & soalan pemahaman`, "Pengecaman suara: anak sebut, app dengar, 3 kali betul = bintang & gambar 3D", "Mod Ketik Jawapan untuk anak belum bertutur / sebutan belum jelas", "Permainan bunyi (kesedaran fonologi): buang/tukar/gabung suku kata, kira suku kata", "Ujian penempatan 2 minit & ujian kelancaran 1 minit (perkataan betul seminit) dengan graf kemajuan", "Kuiz dengar & pilih setiap tahap", "Misi Harian 10 minit + streak", "Ruang Ibu Bapa: laporan, minit, ketepatan, item lemah", "Pusat Cetak: kad imbas, lembaran kerja, sijil, laporan, pelan 30 hari", "5 profil anak, 5 peranti, offline (PWA)", "Onboarding pilih mod: Biasa / Autisme / Disleksia / Kedua-dua / Belum bertutur", "Mod Tenang & pemasa rehat (autisme), fon Atkinson/Lexend, latar krim, suara perlahan (disleksia)", "Pek cerita baharu setiap minggu", "Telur menetas → koleksi haiwan & maskot"] },
     settings: { auto_post: s.auto_post, auto_variants: s.auto_variants, auto_publish_packs: s.auto_publish_packs, auto_coupons: s.auto_coupons, max_posts_day: +s.max_posts_day, daily_sales_target: +s.daily_sales_target, promo: parseJ(s.promo, null), flow_cost: +s.flow_cost },
     metrics: { today: ov.today, last7: ov.d7, last28: ov.d28, daily: ov.series.slice(-14) }, todo: ov.todo, integrations: ov.integrations,
     posts, angles, variants: probBest(vars), leads: { new_24h: leadsNew.n, hot: leadsHot }, affiliates: affTop, coupons,
@@ -662,7 +662,7 @@ async function brainWrite(env, kind, d, agent) {
 /* ------------------------------------------------------------------ */
 /* Router HTTP                                                          */
 /* ------------------------------------------------------------------ */
-const APP_EVENTS = new Set(["open", "lvl_start", "lvl_done", "paywall", "buy_click", "act_ok", "act_fail", "mission_start", "mission_done", "print", "parent_open", "profile_add", "cert"]);
+const APP_EVENTS = new Set(["open", "lvl_start", "lvl_done", "paywall", "buy_click", "act_ok", "act_fail", "mission_start", "mission_done", "print", "parent_open", "profile_add", "cert", "onboard", "placement_start", "placement", "fluency_start", "fluency", "rest"]);
 const LP_EVENTS = new Set(["cta_click", "form_open", "scroll50", "demo_click", "lead_form_open", "wa_click", "faq_open", "demo_play"]);
 
 async function handle(req, env, ctx) {
@@ -736,6 +736,8 @@ async function handle(req, env, ctx) {
       if ((n === "lvl_done" || n === "lvl_start") && x && x.l) pairs.push([`app:${n}:${+x.l}`]);
       if (n === "paywall" && x && x.s) pairs.push(["app:paywall:" + clip(x.s, 30)]);
       if (n === "print" && x && x.k) pairs.push(["app:print:" + clip(x.k, 10)]);
+      if (n === "onboard" && x && x.m) pairs.push(["app:onboard:" + clip(x.m, 12)]);
+      if (n === "placement" && x && x.t) pairs.push(["app:placement:" + (+x.t)]);
     }
     for (const r of (Array.isArray(d.it) ? d.it : []).slice(0, 80)) {
       const t = clip(String(r[0] || "").toLowerCase().replace(/[^a-z ]/g, ""), 40); if (!t) continue;

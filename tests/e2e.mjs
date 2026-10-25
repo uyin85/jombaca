@@ -27,11 +27,11 @@ r = await req("GET", `/api/order?o=${o}&t=bad`); ok(r.s === 404, "order bad toke
 r = await req("POST", "/api/admin/act", { a: "order_paid", id: o }, A); ok(r.j.ok, "admin mark paid", r.j);
 r = await req("GET", `/api/order?o=${o}&t=${t}`); ok(r.j.status === "paid" && r.j.license && r.j.aff, "order paid w/ license", r.j);
 const key = r.j.license;
-r = await req("POST", "/api/license/activate", { key, device: "dev-1" }); ok(r.j.ok && r.j.token && r.j.pack.levels.length === 28, "activate + pack", { ok: r.j.ok, n: r.j.pack && r.j.pack.levels.length, e: r.j.error });
+r = await req("POST", "/api/license/activate", { key, device: "dev-1" }); ok(r.j.ok && r.j.token && r.j.pack.levels.length === 34, "activate + pack", { ok: r.j.ok, n: r.j.pack && r.j.pack.levels.length, e: r.j.error });
 const tok = r.j.token;
 for (let i = 2; i <= 5; i++) await req("POST", "/api/license/activate", { key, device: "dev-" + i });
 r = await req("POST", "/api/license/activate", { key, device: "dev-6" }); ok(!r.j.ok, "device limit 5");
-r = await req("GET", "/api/content", null, { "x-lic": tok }); ok(r.j.levels && r.j.levels.length === 28, "content with token");
+r = await req("GET", "/api/content", null, { "x-lic": tok }); ok(r.j.levels && r.j.levels.length === 34, "content with token");
 r = await req("GET", "/api/content", null, { "x-lic": tok.slice(0, -2) + "xx" }); ok(r.s === 401, "content bad token 401");
 // telemetry
 r = await req("POST", "/api/ev", { iid: "x", ev: [["open", 0], ["lvl_done", { l: 3 }], ["paywall", { s: "map" }], ["evil", 0]], it: [["ba", 5, 2], ["bo", 4, 4]] }); ok(r.j.ok, "telemetry");

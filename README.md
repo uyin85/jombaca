@@ -2,7 +2,7 @@
 
 Satu sistem lengkap yang menjual **Jom Baca! Pro** (RM20) setiap hari:
 
-- **Produk** dinaik taraf: 31 tahap, Misi Harian, Ruang Ibu Bapa, Pusat Cetak, 5 profil, offline, pek cerita mingguan, lesen.
+- **Produk** dinaik taraf: 40 tahap ikut pola KV → KVK → KVKK (seperti di sekolah), mod Autisme / Disleksia / Ketik Jawapan, ujian penempatan & kelancaran, Misi Harian, Ruang Ibu Bapa, Pusat Cetak, 5 profil, offline, pek cerita mingguan, lesen.
 - **HQ** (Cloudflare Worker + D1): laman jualan dengan A/B automatik, checkout ToyyibPay, lesen, leads, affiliate, auto-post, emel nurture, papan admin.
 - **Otak** (8 agen AI di Modal + GitHub Actions, boleh disambung ke Hermes): merancang, menulis kandungan, video Flow, promo, follow-up lead, affiliate, produk, dan **belajar daripada data setiap malam**.
 
