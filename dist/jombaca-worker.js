@@ -251,6 +251,8 @@ var DEFAULTS = {
   support_email: "",
   email_from: "",
   // cth: Jom Baca <hello@domainanda.com>
+  email_reply_to: "",
+  // balasan pelanggan pergi ke sini (cth Gmail anda) jika alamat penghantar tiada peti masuk
   toyyib_sandbox: "0",
   // 1 = guna ToyyibPay sandbox (dev.toyyibpay.com) untuk ujian
   manual_pay_text: "Pembayaran dalam talian sedang disediakan. Kami akan hubungi anda melalui WhatsApp untuk melengkapkan pembelian.",
@@ -474,14 +476,14 @@ function emailWrap(s, inner, unsub) {
 async function sendEmail(env, s, to, subject, html) {
   const from = s.email_from || "";
   const m = from.match(/^(.*)<(.+)>$/);
-  const fromName = m ? m[1].trim() : s.brand, fromEmail = m ? m[2].trim() : from;
+  const fromName = m ? m[1].trim() : s.brand, fromEmail = m ? m[2].trim() : from, rt = okEmail(s.email_reply_to) ? s.email_reply_to.trim() : "";
   if (env.BREVO_API_KEY && fromEmail) {
-    const r = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": env.BREVO_API_KEY, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ sender: { name: fromName, email: fromEmail }, to: [{ email: to }], subject, htmlContent: html }) });
+    const r = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": env.BREVO_API_KEY, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ sender: { name: fromName, email: fromEmail }, to: [{ email: to }], subject, htmlContent: html, ...rt ? { replyTo: { email: rt } } : {} }) });
     if (!r.ok) throw new Error("brevo " + r.status + " " + (await r.text()).slice(0, 200));
     return true;
   }
   if (env.RESEND_API_KEY && fromEmail) {
-    const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" }, body: JSON.stringify({ from: `${fromName} <${fromEmail}>`, to: [to], subject, html }) });
+    const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" }, body: JSON.stringify({ from: `${fromName} <${fromEmail}>`, to: [to], subject, html, ...rt ? { reply_to: rt } : {} }) });
     if (!r.ok) throw new Error("resend " + r.status + " " + (await r.text()).slice(0, 200));
     return true;
   }
