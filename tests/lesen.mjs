@@ -40,5 +40,54 @@ ok(tt && tt.kind === "tester" && tt.rating === 5, "testimoni ditanda tester + ra
 await act("testimonial_status", { id: tt.id, status: "approved" });
 r = await req("GET", "/api/lp"); ok(r.j.testimonials.length === 1 && r.j.testimonials[0].kind === "tester", "laman jualan papar testimoni dengan jenis", r.j.testimonials);
 ok(!r.j.testimonials.some(x => x.text.includes("kurang jelas")), "maklum balas tanpa izin tidak disiarkan");
+// ---- aliran video pengguji
+const raw = (m, p, buf, ct) => fetch(B + p, { method: m, headers: { "content-type": ct }, body: buf }).then(async r => ({ s: r.status, j: await r.json().catch(() => ({})) }));
+r = await req("GET", "/api/admin/list?t=licenses", null, A); const L2 = r.j.rows.find(x => x.key === key); ok(L2.expires > Date.now() + 9 * 864e5 && L2.expires < Date.now() + 11 * 864e5, "lesen pengguji tamat dalam 10 hari", L2);
+r = await req("GET", "/api/tester/me?k=" + key); ok(r.j.ok && r.j.status === "trial" && r.j.days_left === 10, "status percubaan 10 hari", r.j);
+r = await req("GET", "/api/tester/me?k=JB-AAAA-BBBB-CCCC"); ok(r.s === 404, "kod salah ditolak");
+r = await raw("POST", `/api/tester/upload?k=${key}&type=usage`, new Uint8Array(10), "image/png"); ok(!r.j.ok, "bukan video ditolak", r.j);
+r = await req("POST", "/api/tester/submit?k=" + key, { consent_review: true, summary: "x" }); ok(!r.j.ok && /kedua-dua/.test(r.j.error), "hantar tanpa video ditolak", r.j);
+const vbuf = new Uint8Array(200000).map((_, i) => i % 251);
+r = await raw("POST", `/api/tester/upload?k=${key}&type=usage`, vbuf, "video/mp4"); ok(r.j.ok && r.j.size === 200000, "video 1 dimuat naik", r.j);
+r = await raw("POST", `/api/tester/upload?k=${key}&type=testi`, vbuf.slice(0, 150000), "video/quicktime"); ok(r.j.ok, "video 2 dimuat naik", r.j);
+r = await req("GET", "/api/tester/me?k=" + key); ok(r.j.sub && r.j.sub.usage && r.j.sub.testi && r.j.sub.status === "draft", "draf ada 2 video", r.j);
+r = await req("POST", "/api/tester/submit?k=" + key, { summary: "Anak saya suka sangat, dah boleh baca bola dan buku.", pub_parent: true }); ok(!r.j.ok, "tanpa izin semakan ditolak", r.j);
+r = await req("POST", "/api/tester/submit?k=" + key, { summary: "Anak saya suka sangat, dah boleh baca bola dan buku.", consent_review: true, pub_parent: true }); ok(r.j.ok, "video dihantar untuk semakan", r.j);
+r = await req("GET", "/api/tester/me?k=" + key); ok(r.j.status === "pending", "status menunggu semakan", r.j);
+r = await raw("POST", `/api/tester/upload?k=${key}&type=usage`, vbuf, "video/mp4"); ok(!r.j.ok, "tak boleh muat naik semasa semakan", r.j);
+r = await req("GET", "/api/admin/list?t=testers", null, A); let T = r.j.rows.find(x => x.key === key);
+ok(T && T.status === "pending" && T.usage_url && T.testi_url && T.pub_parent === 1, "admin nampak pengguji + pautan video", T);
+const priv = T.usage_url.replace(/^https?:\/\/[^/]+/, "");
+let vr = await fetch(B + priv); ok(vr.status === 200 && (await vr.arrayBuffer()).byteLength === 200000, "video peribadi boleh dimainkan melalui pautan bertandatangan");
+vr = await fetch(B + priv, { headers: { range: "bytes=100-199" } }); const vb = new Uint8Array(await vr.arrayBuffer());
+ok(vr.status === 206 && vb.length === 100 && vb[0] === 100 % 251 && vr.headers.get("content-range") === "bytes 100-199/200000", "sokongan Range (seek video)", [vr.status, vb.length, vr.headers.get("content-range")]);
+vr = await fetch(B + priv.replace(/s=[^&]+/, "s=salah")); ok(vr.status === 403, "tandatangan salah ditolak");
+const objKey = decodeURIComponent(/k=([^&]+)/.exec(priv)[1]);
+vr = await fetch(B + "/m/" + encodeURIComponent(objKey)); ok(vr.status === 404, "video pengguji TIDAK boleh dibuka melalui /m/ awam");
+// tolak, kemudian hantar semula, kemudian lulus
+await act("tester_reject", { id: T.sub_id, reason: "Suara anak tak jelas" });
+r = await req("GET", "/api/tester/me?k=" + key); ok(r.j.status === "trial" && r.j.sub.status === "rejected" && /tak jelas/.test(r.j.sub.reason), "ditolak dengan sebab, boleh hantar semula", r.j);
+r = await raw("POST", `/api/tester/upload?k=${key}&type=usage`, vbuf, "video/mp4"); ok(r.j.ok, "muat naik semula selepas ditolak");
+r = await raw("POST", `/api/tester/upload?k=${key}&type=testi`, vbuf, "video/mp4");
+r = await req("POST", "/api/tester/submit?k=" + key, { summary: "Lepas 8 hari anak saya dah boleh baca ayat pendek sendiri. Terbaik.", consent_review: true, pub_parent: true, pub_child: false }); ok(r.j.ok, "hantar semula");
+r = await req("GET", "/api/admin/list?t=testers", null, A); T = r.j.rows.find(x => x.key === key);
+await act("tester_approve", { id: T.sub_id });
+r = await req("GET", "/api/tester/me?k=" + key); ok(r.j.status === "approved", "diluluskan", r.j);
+r = await req("GET", "/api/admin/list?t=licenses", null, A); ok(r.j.rows.find(x => x.key === key).expires === null, "lesen jadi seumur hidup (tiada tarikh tamat)");
+r = await req("GET", "/api/admin/list?t=testimonials", null, A); ok(r.j.rows.some(x => x.lic === key && /ayat pendek/.test(x.text) && x.status === "pending"), "testimoni draf dicipta (izin siar ibu bapa)");
+r = await req("POST", "/api/tester/submit?k=" + key, { consent_review: true }); ok(!r.j.ok && /seumur hidup/.test(r.j.error), "tiada lagi muat naik selepas lulus");
+// pengguji kedua: percubaan tamat
+r = await req("GET", "/api/admin/list?t=licenses", null, A); const k2 = r.j.rows.find(x => x.kind === "tester" && x.key !== key).key;
+r = await req("POST", "/api/license/activate", { key: k2, device: "d-x" }); ok(r.j.ok && r.j.trial_days === 10, "aktif pengguji 2, baki 10 hari", r.j); const tk2 = r.j.token;
+r = await req("GET", "/api/content", null, { "x-lic": tk2 }); ok(r.s === 200 && r.j.trial_days === 10, "kandungan beri baki hari");
+await act("tester_extend", { key: k2, days: -1 });
+r = await req("GET", "/api/content", null, { "x-lic": tk2 }); ok(r.s === 403 && r.j.expired, "kandungan disekat bila percubaan tamat", r.j);
+r = await req("POST", "/api/license/activate", { key: k2, device: "d-y" }); ok(!r.j.ok && r.j.expired && r.j.upload.includes(k2), "aktivasi tamat beri pautan muat naik", r.j);
+r = await req("GET", "/api/tester/me?k=" + k2); ok(r.j.status === "expired", "status tamat", r.j);
+r = await raw("POST", `/api/tester/upload?k=${k2}&type=usage`, vbuf, "video/mp4"); ok(r.j.ok, "tamat pun masih boleh muat naik video");
+await act("tester_extend", { key: k2, days: 10 });
+// pengawas
+r = await req("GET", "/api/admin/overview", null, A); ok(Array.isArray(r.j.health) && r.j.health.length >= 8, "kad kesihatan Pengawas", r.j.health && r.j.health.map(h => h.name));
+r = await req("GET", "/api/admin/list?t=settings", null, A); ok(!r.j.rows.some(x => /^wd:/.test(x.k)), "kunci dalaman Pengawas tersembunyi");
 await act("setting_set", { k: "tester_slots", v: "10" });
 console.log(fails ? `\n${fails} GAGAL` : "\nSEMUA LULUS");

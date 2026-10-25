@@ -50,9 +50,10 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS coupons(code TEXT PRIMARY KEY, pct INTEGER DEFAULT 0, off INTEGER DEFAULT 0, expires INTEGER, max_uses INTEGER DEFAULT 0, used INTEGER DEFAULT 0, note TEXT, created INTEGER, agent TEXT)`,
   `CREATE TABLE IF NOT EXISTS testimonials(id INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER, name TEXT, text TEXT, status TEXT DEFAULT 'pending')`,
   `CREATE TABLE IF NOT EXISTS claims(agent TEXT, slot TEXT, ts INTEGER, PRIMARY KEY(agent, slot))`,
+  `CREATE TABLE IF NOT EXISTS tester_subs(id INTEGER PRIMARY KEY AUTOINCREMENT, lic TEXT, created INTEGER, updated INTEGER, usage_key TEXT, usage_size INTEGER, testi_key TEXT, testi_size INTEGER, summary TEXT, consent_review INTEGER DEFAULT 0, pub_parent INTEGER DEFAULT 0, pub_child INTEGER DEFAULT 0, status TEXT DEFAULT 'draft', reason TEXT, reviewed_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS proposals(id INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER, agent TEXT, kind TEXT, title TEXT, body TEXT, status TEXT DEFAULT 'open')`,
 ];
-const SCHEMA_V = "4";
+const SCHEMA_V = "5";
 
 const DEFAULTS = {
   brand: "Jom Baca!",
@@ -79,6 +80,9 @@ const DEFAULTS = {
   max_devices: "3",            // had peranti setiap lesen
   tester_slots: "10",           // bilangan tempat Program Pengguji Awal
   tester_open: "1",             // 1 = pendaftaran pengguji dibuka
+  tester_trial_days: "10",      // tempoh Pro percubaan pengguji sebelum video diluluskan
+  video_keep_days: "90",        // video pengguji dipadam selepas N hari (kecuali ada izin siar)
+  tg_alerts: "1",               // 1 = Pengawas hantar amaran Telegram
   nurture_tpl: "",
 };
 
@@ -120,7 +124,7 @@ async function migrate(env) {
   const v = await env.DB.prepare("SELECT v FROM settings WHERE k='schema_v'").first().catch(() => null);
   if (!v || v.v !== SCHEMA_V) {
     await env.DB.batch(SCHEMA.map(s => env.DB.prepare(s)));
-    const add = [["licenses", "kind TEXT DEFAULT 'paid'"], ["licenses", "fails INTEGER DEFAULT 0"], ["licenses", "phone TEXT"], ["testimonials", "rating INTEGER"], ["testimonials", "kind TEXT"], ["testimonials", "lic TEXT"], ["testimonials", "consent INTEGER DEFAULT 0"], ["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"]];
+    const add = [["licenses", "expires INTEGER"], ["licenses", "kind TEXT DEFAULT 'paid'"], ["licenses", "fails INTEGER DEFAULT 0"], ["licenses", "phone TEXT"], ["testimonials", "rating INTEGER"], ["testimonials", "kind TEXT"], ["testimonials", "lic TEXT"], ["testimonials", "consent INTEGER DEFAULT 0"], ["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"]];
     for (const [t, c] of add) await env.DB.prepare(`ALTER TABLE ${t} ADD COLUMN ${c}`).run().catch(() => {});
     await env.DB.prepare("INSERT OR REPLACE INTO settings(k,v) VALUES('schema_v',?)").bind(SCHEMA_V).run();
     const sec = await env.DB.prepare("SELECT v FROM settings WHERE k='lic_secret'").first();
@@ -232,6 +236,11 @@ async function verifyLicToken(env, tok) {
   if (lic) lic._devOk = parseJ(lic.devices, []).includes(dev);
   return lic;
 }
+async function vidUrl(env, site, objKey, mins = 120) {
+  const e = now() + mins * 60e3;
+  return `${site}/api/vid?k=${encodeURIComponent(objKey)}&e=${e}&s=${(await hmac(await licSecret(env), "vid|" + objKey + "|" + e)).slice(0, 20)}`;
+}
+const trialLeft = lic => lic && lic.expires ? Math.max(0, Math.ceil((lic.expires - now()) / DAY)) : null;
 async function resetSig(env, key) { return (await hmac(await licSecret(env), "reset|" + key)).slice(0, 16); }
 function maskKey(k) { return String(k || "").slice(0, 8) + "••••"; }
 async function contentPack(env) {
@@ -460,6 +469,10 @@ async function sendDueEmails(env, s) {
   const price = rm((await priceFor(env, s, null)).amount);
   for (const e of results) {
     try {
+      if (e.kind === "tester_fb") {
+        const done = await env.DB.prepare("SELECT 1 FROM licenses l WHERE l.email=? AND l.kind='tester' AND (l.expires IS NULL OR EXISTS (SELECT 1 FROM tester_subs t WHERE t.lic=l.key AND t.status IN ('pending','approved')))").bind(e.to_email).first();
+        if (done) { await env.DB.prepare("UPDATE emails SET status='skipped' WHERE id=?").bind(e.id).run(); continue; }
+      }
       if (e.lead_id && (e.unsub || (e.bought && String(e.kind).startsWith("nurture")))) { await env.DB.prepare("UPDATE emails SET status='skipped' WHERE id=?").bind(e.id).run(); continue; }
       let subject = e.subject, html = e.html;
       const unsub = e.lead_id ? `${site}/api/unsub?l=${e.lead_id}&s=${await unsubSig(env, e.lead_id)}` : "";
@@ -509,7 +522,7 @@ async function overview(env) {
     q("SELECT COUNT(*) n FROM posts WHERE status='failed' AND created>?", now() - 3 * DAY),
   ]);
   const plan = await env.DB.prepare("SELECT * FROM plans ORDER BY day DESC LIMIT 1").first();
-  return { s: { price_sen: s.price_sen, daily_sales_target: s.daily_sales_target, guarantee_days: s.guarantee_days, site_url: s.site_url }, today, d7, d28, series: ser,
+  return { health: await health(env, s), s: { price_sen: s.price_sen, daily_sales_target: s.daily_sales_target, guarantee_days: s.guarantee_days, site_url: s.site_url }, today, d7, d28, series: ser,
     todo: { manual_posts: manual.n, hot_leads: hot.n, payouts: payouts.n, payout_amt: payouts.amt, proposals: props.n, flow_queue: flowQ.n, failed_posts: failed.n },
     plan: plan ? { day: plan.day, ...parseJ(plan.json, {}) } : null,
     integrations: { toyyibpay: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), toyyib_sandbox: s.toyyib_sandbox === "1" && !!(env.TOYYIB_SANDBOX_SECRET && env.TOYYIB_SANDBOX_CATEGORY), email: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), threads: canAuto(env, "threads"), facebook: canAuto(env, "facebook"), tg_channel: canAuto(env, "telegram"), brain: !!env.BRAIN_KEY, r2: !!env.MEDIA } };
@@ -550,7 +563,7 @@ async function brainState(env, agent) {
     product: { name: s.brand, price: rm(+s.price_sen), floor: rm(+s.floor_sen), aff_rate_pct: +s.aff_rate_pct, guarantee_days: +s.guarantee_days, site: siteUrl(env, s), levels: CORE.n_levels || 40, items: CORE.n_items || 360, free_levels: CORE.free,
       features: [`${CORE.n_levels || 40} tahap dalam 7 bahagian, ikut pola suku kata yang digunakan di sekolah Malaysia: huruf (vokal, huruf kecil & besar, huruf keliru b/d/p) → suku kata KV → perkataan terbuka → KVK → KVKK → vokal berganding, diftong, ng/ny/kh/sy, konsonan bergabung → kata kerja & imbuhan → ayat, cerita & soalan pemahaman`, "Pengecaman suara: anak sebut, app dengar, 3 kali betul = bintang & gambar 3D", "Mod Ketik Jawapan untuk anak belum bertutur / sebutan belum jelas", "Permainan bunyi (kesedaran fonologi): buang/tukar/gabung suku kata, kira suku kata", "Ujian penempatan 2 minit & ujian kelancaran 1 minit (perkataan betul seminit) dengan graf kemajuan", "Kuiz dengar & pilih setiap tahap", "Misi Harian 10 minit + streak", "Ruang Ibu Bapa: laporan, minit, ketepatan, item lemah", "Pusat Cetak: kad imbas, lembaran kerja, sijil, laporan, pelan 30 hari", "5 profil anak, 3 peranti, offline (PWA)", "Onboarding pilih mod: Biasa / Autisme / Disleksia / Kedua-dua / Belum bertutur", "Mod Tenang & pemasa rehat (autisme), fon Atkinson/Lexend, latar krim, suara perlahan (disleksia)", "Pek cerita baharu setiap minggu", "Telur menetas → koleksi haiwan & maskot"] },
     settings: { auto_post: s.auto_post, auto_variants: s.auto_variants, auto_publish_packs: s.auto_publish_packs, auto_coupons: s.auto_coupons, max_posts_day: +s.max_posts_day, daily_sales_target: +s.daily_sales_target, promo: parseJ(s.promo, null), flow_cost: +s.flow_cost },
-    metrics: { today: ov.today, last7: ov.d7, last28: ov.d28, daily: ov.series.slice(-14) }, todo: ov.todo, integrations: ov.integrations,
+    metrics: { today: ov.today, last7: ov.d7, last28: ov.d28, daily: ov.series.slice(-14) }, todo: ov.todo, integrations: ov.integrations, health: ov.health,
     posts, angles, variants: probBest(vars), leads: { new_24h: leadsNew.n, hot: leadsHot }, affiliates: affTop, coupons,
     flow: { budget: flowBudget, days_left_in_month: dim - +mytDay().slice(8, 10) + 1, queue: flowQ },
     app: { events_7d: appEv, hardest_items: hardest }, packs, learnings, plans: plans.map(p => ({ day: p.day, ...parseJ(p.json, {}) })), runs, proposals: props,
@@ -714,9 +727,22 @@ async function handle(req, env, ctx) {
     return Response.redirect(dest.startsWith("/") ? url.origin + dest : dest, 302);
   }
   if (p.startsWith("/m/") && env.MEDIA) {
-    const obj = await env.MEDIA.get(decodeURIComponent(p.slice(3)));
+    const mk = decodeURIComponent(p.slice(3));
+    if (!mk.startsWith("v/")) return new Response("not found", { status: 404 });
+    const obj = await env.MEDIA.get(mk);
     if (!obj) return new Response("not found", { status: 404 });
     return new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType || "application/octet-stream", "cache-control": "public, max-age=31536000" } });
+  }
+  if (p === "/api/vid" && env.MEDIA) {
+    const k = url.searchParams.get("k") || "", e = +url.searchParams.get("e") || 0;
+    if (!k.startsWith("tester/") || e < now() || url.searchParams.get("s") !== (await hmac(await licSecret(env), "vid|" + k + "|" + e)).slice(0, 20)) return new Response("Pautan tamat atau tidak sah", { status: 403 });
+    const rg = /bytes=(\d+)-(\d*)/.exec(req.headers.get("range") || "");
+    const head = await env.MEDIA.head(k); if (!head) return new Response("not found", { status: 404 });
+    const size = head.size, start = rg ? +rg[1] : 0, end = rg && rg[2] ? Math.min(+rg[2], size - 1) : size - 1;
+    const obj = await env.MEDIA.get(k, rg ? { range: { offset: start, length: end - start + 1 } } : undefined);
+    const hd = { "content-type": head.httpMetadata?.contentType || "video/mp4", "accept-ranges": "bytes", "cache-control": "private, no-store", "content-length": String(end - start + 1) };
+    if (rg) hd["content-range"] = `bytes ${start}-${end}/${size}`;
+    return new Response(obj.body, { status: rg ? 206 : 200, headers: hd });
   }
   if (p === "/admin") return new Response(ADMIN_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 
@@ -799,7 +825,7 @@ async function handle(req, env, ctx) {
     const tc = toyCfg(env, s);
     if (tc.secret && tc.cat) {
       try { const code = await toyCreateBill(tc, o, site); payUrl = tc.host + "/" + code; await env.DB.prepare("UPDATE orders SET billcode=?, pay_url=? WHERE id=?").bind(code, payUrl, o.id).run(); }
-      catch (e) { await tg(env, "⚠️ ToyyibPay" + (tc.sandbox ? " (sandbox)" : "") + " gagal: " + e.message); return bad("Gerbang pembayaran sedang bermasalah. Cuba sebentar lagi atau hubungi kami di WhatsApp.", 502); }
+      catch (e) { ctx.waitUntil(bump(env, [["pay_error"]])); await tg(env, "⚠️ ToyyibPay" + (tc.sandbox ? " (sandbox)" : "") + " gagal: " + e.message); return bad("Gerbang pembayaran sedang bermasalah. Cuba sebentar lagi atau hubungi kami di WhatsApp.", 502); }
     } else {
       payUrl = `${site}/terima-kasih?o=${o.id}&t=${o.tok}`;
       ctx.waitUntil(tg(env, `🧾 Pesanan manual (ToyyibPay belum disetup): ${o.name} · ${o.phone} · ${rm(o.amount)} · ${o.id}`));
@@ -837,6 +863,7 @@ async function handle(req, env, ctx) {
     const lic = await env.DB.prepare("SELECT * FROM licenses WHERE key=?").bind(key).first();
     if (!lic) return J({ ok: false, error: "Kod lesen tidak dijumpai. Semak semula (contoh: JB-ABCD-EFGH-JKLM)." });
     if (lic.status !== "active") return J({ ok: false, error: "Lesen ini tidak aktif. Hubungi kami." });
+    if (lic.expires && lic.expires < now()) return J({ ok: false, expired: true, upload: `/pengguji-hantar?k=${encodeURIComponent(key)}`, error: "Tempoh percubaan pengguji sudah tamat. Hantar 2 video anda untuk unlock Jom Baca Pro seumur hidup." });
     const devs = parseJ(lic.devices, []), s = await settings(env), maxD = Math.max(1, +s.max_devices || 3), site = siteUrl(env, s, req);
     if (!devs.includes(dev)) {
       if (devs.length >= maxD) {
@@ -852,7 +879,7 @@ async function handle(req, env, ctx) {
       }
     }
     const aff = await env.DB.prepare("SELECT code, token FROM affiliates WHERE email=?").bind(lic.email).first();
-    return J({ ok: true, token: `${key}.${dev}.${await hmac(await licSecret(env), key + "|" + dev)}`, name: lic.name, aff: aff ? aff.code : "", aff_k: aff ? aff.token : "", pack: await contentPack(env) });
+    return J({ ok: true, trial_days: trialLeft(lic), token: `${key}.${dev}.${await hmac(await licSecret(env), key + "|" + dev)}`, name: lic.name, aff: aff ? aff.code : "", aff_k: aff ? aff.token : "", pack: await contentPack(env) });
   }
   if (p === "/api/license/reset" && M === "GET") {
     const key = clip(url.searchParams.get("k"), 30), sg = url.searchParams.get("s") || "";
@@ -878,7 +905,8 @@ async function handle(req, env, ctx) {
     if (!lic) return J({ ok: false, error: "token" }, 401);
     if (lic.status !== "active") return J({ ok: false, revoked: true }, 403);
     if (!lic._devOk) return J({ ok: false, revoked: true, removed: true }, 403);
-    return J(await contentPack(env));
+    if (lic.expires && lic.expires < now()) return J({ ok: false, revoked: true, expired: true, key: lic.key }, 403);
+    return J({ ...(await contentPack(env)), trial_days: trialLeft(lic) });
   }
   if (p === "/api/aff/signup" && M === "POST") {
     const d = await body(); if (d.hp) return J({ ok: true });
@@ -941,17 +969,61 @@ async function handle(req, env, ctx) {
     if (dup) return bad("Emel atau nombor ini sudah mempunyai lesen Jom Baca Pro.");
     const n = await env.DB.prepare("SELECT COUNT(*) n FROM licenses WHERE kind='tester'").first();
     if (n.n >= +s.tester_slots) return bad("Maaf, semua tempat pengguji sudah penuh.");
-    const key = newKey();
-    await env.DB.prepare("INSERT INTO licenses(key,order_id,email,name,created,kind,phone) VALUES(?,?,?,?,?,'tester',?)").bind(key, null, email, name, now(), phone).run();
+    const key = newKey(), days = Math.max(3, +s.tester_trial_days || 10), exp = now() + days * DAY;
+    await env.DB.prepare("INSERT INTO licenses(key,order_id,email,name,created,kind,phone,expires) VALUES(?,?,?,?,?,'tester',?,?)").bind(key, null, email, name, now(), phone, exp).run();
     const lead = await upsertLead(env, { name, email, phone, child_age: d.child_age, src: "pengguji" }, "lead");
     if (lead) await env.DB.prepare("UPDATE leads SET stage='tester', notes=? WHERE id=?").bind(clip(`Pengguji. Keperluan: ${d.needs || "-"}`, 300), lead.id).run();
-    const fb = `${site}/testimoni?k=${encodeURIComponent(key)}`;
-    const html = emailWrap(s, `<p>Hai ${name.split(" ")[0]},</p><p>Terima kasih kerana menyertai <b>Program Pengguji Awal Jom Baca!</b> 🎉</p><p>Kod lesen Pro anda:</p><p style="font-size:22px;font-weight:bold;letter-spacing:2px">${key}</p><p><a href="${site}/app/?lesen=${key}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">👉 Buka Jom Baca Pro</a></p><p><b>Permintaan kami:</b> guna bersama anak sekurang-kurangnya 10 minit sehari selama 7 hari. Selepas itu, ceritakan pengalaman sebenar anda, yang baik dan yang perlu diperbaiki:</p><p><a href="${fb}">✍️ Borang maklum balas</a></p><p>Kami akan ingatkan anda pada hari ke-7.</p>`, "");
+    const up = `${site}/pengguji-hantar?k=${encodeURIComponent(key)}`;
+    const html = emailWrap(s, `<p>Hai ${name.split(" ")[0]},</p><p>Terima kasih kerana menyertai <b>Program Pengguji Awal Jom Baca!</b> 🎉</p><p>Kod lesen Pro <b>percubaan ${days} hari</b> anda:</p><p style="font-size:22px;font-weight:bold;letter-spacing:2px">${key}</p><p><a href="${site}/app/?lesen=${key}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">👉 Buka Jom Baca Pro</a></p><p><b>Untuk unlock Pro seumur hidup</b>, sebelum ${days} hari tamat:</p><ol><li>Guna bersama anak sekurang-kurangnya 10 minit sehari.</li><li>Rakam <b>video 1</b>: anak sedang guna app (30 hingga 90 saat). Rakam skrin dan tangan anak sudah cukup, muka anak tidak perlu ditunjukkan.</li><li>Rakam <b>video 2</b>: testimoni anda sendiri (30 hingga 60 saat). Ceritakan pengalaman sebenar.</li><li>Muat naik kedua-dua video di sini: <a href="${up}">${up}</a></li></ol><p>Kami akan semak dan luluskan dalam masa 1 hingga 2 hari bekerja.</p>`, "");
     await sendEmail(env, s, email, "Lesen Pengguji Jom Baca Pro anda: " + key, html).catch(() => {});
-    await env.DB.prepare("INSERT INTO emails(created,lead_id,to_email,subject,html,send_at,kind) VALUES(?,?,?,?,?,?,?)").bind(now(), lead ? lead.id : null, email, "7 hari dengan Jom Baca: macam mana anak anda?",
-      emailWrap(s, `<p>Hai ${name.split(" ")[0]},</p><p>Sudah seminggu anda mencuba Jom Baca Pro. Boleh luangkan 2 minit untuk ceritakan pengalaman anda? Maklum balas jujur, termasuk yang kurang baik, sangat membantu kami memperbaiki app ini.</p><p><a href="${fb}">✍️ Tulis maklum balas</a></p><p>Tip: buat <b>Ujian Kelancaran 1 minit</b> dalam Ruang Ibu Bapa dan kongsi angkanya. Ia menunjukkan kemajuan sebenar anak.</p>`, ""), now() + 7 * DAY, "tester_fb").run();
-    ctx.waitUntil(tg(env, `🧪 Pengguji baharu (${n.n + 1}/${s.tester_slots}): ${name} · ${phone} · anak ${clip(d.child_age, 20) || "-"} · ${clip(d.needs, 60) || "-"}`));
-    return J({ ok: true, key, app: `/app/?lesen=${key}`, left: +s.tester_slots - n.n - 1 });
+    const remind = (dd, subj, msg) => env.DB.prepare("INSERT INTO emails(created,lead_id,to_email,subject,html,send_at,kind) VALUES(?,?,?,?,?,?,?)").bind(now(), lead ? lead.id : null, email, subj, emailWrap(s, `<p>Hai ${name.split(" ")[0]},</p>${msg}<p><a href="${up}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">📹 Muat naik video</a></p>`, ""), now() + dd * DAY, "tester_fb").run();
+    await remind(Math.max(1, days - 3), "Jom Baca: masa untuk rakam video pengguji 📹", `<p>Tempoh percubaan Pro anda tinggal <b>3 hari</b>. Untuk unlock Pro seumur hidup, muat naik 2 video: anak sedang guna app, dan testimoni anda.</p><p>Tip: buat <b>Ujian Kelancaran 1 minit</b> dalam Ruang Ibu Bapa dan sebut angkanya dalam video testimoni.</p>`);
+    await remind(Math.max(1, days - 1), "Tinggal 1 hari: unlock Jom Baca Pro seumur hidup", `<p>Tempoh percubaan Pro anda <b>tamat esok</b>. Muat naik 2 video anda hari ini supaya akses Pro tidak terputus.</p>`);
+    ctx.waitUntil(tg(env, `🧪 Pengguji baharu (${n.n + 1}/${s.tester_slots}): ${name} · ${phone} · anak ${clip(d.child_age, 20) || "-"} · ${clip(d.needs, 60) || "-"} · percubaan ${days} hari`));
+    return J({ ok: true, key, app: `/app/?lesen=${key}`, upload: `/pengguji-hantar?k=${encodeURIComponent(key)}`, days, left: +s.tester_slots - n.n - 1 });
+  }
+  if (p.startsWith("/api/tester/")) {
+    const key = clip(String(url.searchParams.get("k") || "").toUpperCase(), 30);
+    const lic = key ? await env.DB.prepare("SELECT * FROM licenses WHERE key=? AND kind='tester'").bind(key).first() : null;
+    if (!lic) return bad("Kod pengguji tidak sah.", 404);
+    let sub = await env.DB.prepare("SELECT * FROM tester_subs WHERE lic=? ORDER BY id DESC LIMIT 1").bind(key).first();
+    const s = await settings(env), site = siteUrl(env, s, req);
+    if (p === "/api/tester/me" && M === "GET") {
+      const st = !lic.expires ? "approved" : sub && sub.status === "pending" ? "pending" : lic.expires < now() ? "expired" : "trial";
+      return J({ ok: true, name: lic.name, status: st, days_left: trialLeft(lic), sub: sub ? { status: sub.status, reason: sub.reason, usage: !!sub.usage_key, testi: !!sub.testi_key } : null, r2: !!env.MEDIA });
+    }
+    if (!lic.expires) return bad("Lesen ini sudah diluluskan sebagai Pro seumur hidup. Terima kasih! 🎉");
+    if (sub && sub.status === "pending") return bad("Video anda sedang disemak. Kami akan maklumkan melalui emel.");
+    if (!sub || sub.status !== "draft") {
+      const r = await env.DB.prepare("INSERT INTO tester_subs(lic,created,updated,status) VALUES(?,?,?,'draft')").bind(key, now(), now()).run();
+      sub = { id: r.meta.last_row_id, status: "draft" };
+    }
+    if (p === "/api/tester/upload" && M === "POST") {
+      if (!env.MEDIA) return bad("Storan video belum disediakan. Hubungi kami.", 500);
+      const type = url.searchParams.get("type") === "testi" ? "testi" : "usage";
+      const ct = (req.headers.get("content-type") || "").toLowerCase(), len = +req.headers.get("content-length") || 0;
+      if (!ct.startsWith("video/")) return bad("Fail mesti video (mp4, mov, webm).");
+      if (len > 95 * 1024 * 1024) return bad("Video terlalu besar (maksimum 95MB). Rakam lebih pendek atau hantar melalui WhatsApp dahulu untuk dimampatkan.");
+      const ext = (ct.split("/")[1] || "mp4").replace(/[^a-z0-9]/g, "").replace("quicktime", "mov").slice(0, 5) || "mp4";
+      const objKey = `tester/${key}/${type}-${Date.now().toString(36)}.${ext}`;
+      const put = await env.MEDIA.put(objKey, req.body, { httpMetadata: { contentType: ct } });
+      const old = type === "testi" ? sub.testi_key : sub.usage_key;
+      if (old) ctx.waitUntil(env.MEDIA.delete(old).catch(() => {}));
+      await env.DB.prepare(`UPDATE tester_subs SET ${type === "testi" ? "testi_key=?, testi_size=?" : "usage_key=?, usage_size=?"}, updated=? WHERE id=?`).bind(objKey, put ? put.size : len, now(), sub.id).run();
+      return J({ ok: true, type, size: put ? put.size : len });
+    }
+    if (p === "/api/tester/submit" && M === "POST") {
+      const d = await body();
+      const cur = await env.DB.prepare("SELECT * FROM tester_subs WHERE id=?").bind(sub.id).first();
+      if (!cur.usage_key || !cur.testi_key) return bad("Sila muat naik kedua-dua video dahulu.");
+      if (!d.consent_review) return bad("Sila tandakan izin untuk semakan video.");
+      await env.DB.prepare("UPDATE tester_subs SET summary=?, consent_review=1, pub_parent=?, pub_child=?, status='pending', updated=? WHERE id=?").bind(clip(d.summary, 800), d.pub_parent ? 1 : 0, d.pub_child ? 1 : 0, now(), sub.id).run();
+      await env.DB.prepare("UPDATE licenses SET expires=MAX(expires, ?) WHERE key=?").bind(now() + 3 * DAY, key).run();
+      ctx.waitUntil(tg(env, `📹 <b>Video pengguji untuk disemak</b>: ${lic.name}\nIzin siar: ibu bapa ${d.pub_parent ? "✓" : "✗"} · anak ${d.pub_child ? "✓" : "✗"}\n${clip(d.summary, 300)}\n${site}/admin → 🧪 Pengguji`));
+      if (okEmail(lic.email)) ctx.waitUntil(sendEmail(env, s, lic.email, "Video pengguji anda diterima 📹", emailWrap(s, `<p>Hai ${String(lic.name || "").split(" ")[0]},</p><p>Terima kasih! Kedua-dua video anda sudah kami terima dan akan disemak dalam 1 hingga 2 hari bekerja. Akses Pro percubaan anda dilanjutkan 3 hari sementara menunggu semakan.</p>`, "")).catch(() => {}));
+      return J({ ok: true });
+    }
+    return bad("?", 404);
   }
   if (p === "/api/unsub" && M === "GET") {
     const id = +url.searchParams.get("l");
@@ -1018,7 +1090,8 @@ async function handle(req, env, ctx) {
         posts: f === "manual" ? "SELECT * FROM posts WHERE status IN ('manual','manual_wait') ORDER BY scheduled_at LIMIT 100" : "SELECT * FROM posts ORDER BY COALESCE(posted_at, scheduled_at) DESC LIMIT 150",
         leads: f === "hot" ? "SELECT * FROM leads WHERE bought=0 AND unsub=0 AND phone!='' ORDER BY contacted ASC, (stage='checkout') DESC, score DESC, created DESC LIMIT 100" : "SELECT * FROM leads ORDER BY id DESC LIMIT 200",
         orders: "SELECT id,created,name,email,phone,amount,coupon,ref,src,status,paid_at,license,note FROM orders ORDER BY created DESC LIMIT 200",
-        licenses: "SELECT key,name,email,kind,status,created,json_array_length(devices) devices,fails FROM licenses ORDER BY created DESC LIMIT 300",
+        licenses: "SELECT key,name,email,kind,status,created,expires,json_array_length(devices) devices,fails FROM licenses ORDER BY created DESC LIMIT 300",
+        testers: "SELECT l.key, l.name, l.email, l.phone, l.created, l.expires, l.status lic_status, t.id sub_id, t.status, t.usage_key, t.usage_size, t.testi_key, t.testi_size, t.summary, t.pub_parent, t.pub_child, t.reason, t.updated FROM licenses l LEFT JOIN tester_subs t ON t.id=(SELECT MAX(id) FROM tester_subs WHERE lic=l.key) WHERE l.kind='tester' ORDER BY (t.status='pending') DESC, l.created DESC LIMIT 100",
         affiliates: "SELECT a.code,a.name,a.email,a.phone,a.handle,a.payout,a.rate,a.status,a.buyer,a.created,(SELECT COUNT(*) FROM commissions c WHERE c.code=a.code AND c.status!='void') sales,(SELECT COALESCE(SUM(amount),0) FROM commissions c WHERE c.code=a.code AND c.status='pending') owed FROM affiliates a ORDER BY sales DESC, created DESC LIMIT 200",
         commissions: "SELECT c.*, a.name, a.payout FROM commissions c LEFT JOIN affiliates a ON a.code=c.code ORDER BY c.status='pending' DESC, c.id DESC LIMIT 200",
         variants: "SELECT * FROM variants ORDER BY status='live' DESC, slot, id DESC LIMIT 100",
@@ -1033,12 +1106,13 @@ async function handle(req, env, ctx) {
         angles: "SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC",
         prompts: "SELECT * FROM agent_prompts ORDER BY id DESC LIMIT 50",
         plans: "SELECT * FROM plans ORDER BY day DESC LIMIT 14",
-        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v')",
+        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v') AND k NOT LIKE 'wd:%'",
         app: "SELECT k, SUM(n) n FROM stats WHERE day>=date('now','-13 day') AND (k LIKE 'app:%' OR k LIKE 'src:%' OR k LIKE 'ref:%') GROUP BY k ORDER BY n DESC LIMIT 200",
       };
       if (!Q[t]) return bad("t?");
       let rows = (await env.DB.prepare(Q[t]).all()).results;
       if (t === "variants") rows = probBest(rows.filter(r => r.status === "live")).concat(rows.filter(r => r.status !== "live"));
+      if (t === "testers") { const site = siteUrl(env, s, req); for (const r of rows) { r.days_left = trialLeft(r); if (r.usage_key) r.usage_url = await vidUrl(env, site, r.usage_key); if (r.testi_key) r.testi_url = await vidUrl(env, site, r.testi_key); } }
       if (t === "settings") { const m = Object.fromEntries(rows.map(r => [r.k, r.v])); rows = Object.keys(DEFAULTS).map(k => ({ k, v: m[k] != null ? m[k] : DEFAULTS[k], default: DEFAULTS[k] })); }
       return J({ rows });
     }
@@ -1056,6 +1130,28 @@ async function handle(req, env, ctx) {
           await bump(env, [["refund"], ["rev", -o.amount]]); break;
         }
         case "lic_reset": await run("UPDATE licenses SET devices='[]', fails=0 WHERE key=?", clip(d.key, 30)); break;
+        case "tester_approve": {
+          const t = await env.DB.prepare("SELECT t.*, l.email, l.name FROM tester_subs t JOIN licenses l ON l.key=t.lic WHERE t.id=?").bind(+id).first(); if (!t) return bad("?");
+          await env.DB.batch([env.DB.prepare("UPDATE licenses SET expires=NULL, status='active' WHERE key=?").bind(t.lic), env.DB.prepare("UPDATE tester_subs SET status='approved', reviewed_at=? WHERE id=?").bind(now(), t.id)]);
+          if (t.pub_parent && t.summary) await run("INSERT INTO testimonials(created,name,text,rating,kind,lic,consent,status) VALUES(?,?,?,?,?,?,?,'pending')", now(), clip(t.name, 50), clip(t.summary, 800), 5, "tester", t.lic, 1);
+          const site = siteUrl(env, s, req);
+          if (okEmail(t.email)) await sendEmail(env, s, t.email, "Tahniah! Jom Baca Pro anda kini seumur hidup 🎉", emailWrap(s, `<p>Hai ${String(t.name || "").split(" ")[0]},</p><p>Video anda sudah diluluskan. Terima kasih banyak atas bantuan anda! 💚</p><p>Lesen <b>${t.lic}</b> kini <b>Pro seumur hidup</b>. Jika app pernah tamat tempoh, buka semula pautan ini:</p><p><a href="${site}/app/?lesen=${t.lic}" style="display:inline-block;background:#17b26a;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:bold">👉 Buka Jom Baca Pro</a></p>`, "")).catch(() => {});
+          break;
+        }
+        case "tester_reject": {
+          const t = await env.DB.prepare("SELECT t.*, l.email, l.name FROM tester_subs t JOIN licenses l ON l.key=t.lic WHERE t.id=?").bind(+id).first(); if (!t) return bad("?");
+          await run("UPDATE tester_subs SET status='rejected', reason=?, reviewed_at=? WHERE id=?", clip(d.reason, 400), now(), t.id);
+          await run("UPDATE licenses SET expires=MAX(COALESCE(expires,0), ?) WHERE key=?", now() + 3 * DAY, t.lic);
+          const site = siteUrl(env, s, req);
+          if (okEmail(t.email)) await sendEmail(env, s, t.email, "Jom Baca: video pengguji perlu dihantar semula", emailWrap(s, `<p>Hai ${String(t.name || "").split(" ")[0]},</p><p>Terima kasih atas video anda. Kami perlukan sedikit perubahan sebelum boleh meluluskan:</p><p><i>${clip(d.reason, 400) || "Video kurang jelas."}</i></p><p>Anda ada 3 hari lagi untuk muat naik semula:</p><p><a href="${site}/pengguji-hantar?k=${encodeURIComponent(t.lic)}">📹 Muat naik semula</a></p>`, "")).catch(() => {});
+          break;
+        }
+        case "tester_extend": await run("UPDATE licenses SET expires=? WHERE key=? AND kind='tester'", now() + (+d.days || 7) * DAY, clip(d.key, 30)); break;
+        case "tester_delvid": {
+          const t = await env.DB.prepare("SELECT * FROM tester_subs WHERE id=?").bind(+id).first(); if (!t) return bad("?");
+          if (env.MEDIA) for (const k of [t.usage_key, t.testi_key]) if (k) await env.MEDIA.delete(k).catch(() => {});
+          await run("UPDATE tester_subs SET usage_key=NULL, testi_key=NULL WHERE id=?", t.id); break;
+        }
         case "lic_status": await run("UPDATE licenses SET status=? WHERE key=?", d.status === "revoked" ? "revoked" : "active", clip(d.key, 30)); break;
         case "comm_paid": for (const cid of (d.ids || [id])) await run("UPDATE commissions SET status='paid', paid_at=? WHERE id=?", now(), +cid); break;
         case "aff_status": await run("UPDATE affiliates SET status=?, rate=COALESCE(?,rate) WHERE code=?", d.status, d.rate ?? null, id); break;
@@ -1086,6 +1182,44 @@ async function handle(req, env, ctx) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Pengawas: semak kesihatan sistem & amaran Telegram (tanpa spam)     */
+/* ------------------------------------------------------------------ */
+async function health(env, s) {
+  const q = (sql, ...b) => env.DB.prepare(sql).bind(...b).first();
+  const h = mytHour(), out = [];
+  const add = (name, ok, detail, fix) => out.push({ name, ok, detail, fix });
+  const lastRun = await q("SELECT MAX(ts) t FROM agent_runs");
+  const age = lastRun && lastRun.t ? (now() - lastRun.t) / 3600e3 : null;
+  add("Otak AI (Modal/GitHub)", !env.BRAIN_KEY ? null : age != null && (age < 3.5 || h < 7), age == null ? "Belum pernah berjalan" : `Larian terakhir ${age.toFixed(1)} jam lalu`, "Semak Modal (app jombaca-brain) atau GitHub Actions 'Otak Jom Baca'.");
+  const errs = await q("SELECT COUNT(*) n, GROUP_CONCAT(agent, ', ') a FROM agent_runs WHERE status!='ok' AND ts>?", now() - 6 * 3600e3);
+  add("Ralat agen (6 jam)", errs.n < 2, errs.n ? `${errs.n} ralat: ${errs.a}` : "Tiada", "Lihat /admin → 🧠 Otak AI → Larian agen.");
+  const em = await q("SELECT COUNT(*) n, MAX(error) e FROM emails WHERE status='failed' AND created>?", now() - DAY);
+  add("Emel (24 jam)", em.n < 3, em.n ? `${em.n} gagal: ${clip(em.e, 120)}` : "OK", "Semak BREVO_API_KEY dan email_from.");
+  const ps = await q("SELECT COUNT(*) n, MAX(error) e FROM posts WHERE status='failed' AND created>?", now() - DAY);
+  add("Auto-post (24 jam)", ps.n < 2, ps.n ? `${ps.n} gagal: ${clip(ps.e, 120)}` : "OK", "Token Threads/FB mungkin tamat.");
+  const st = await statSum(env, ["pay_error", "err_500"], mytDay());
+  add("Pembayaran (hari ini)", st.pay_error < 2, st.pay_error ? `${st.pay_error} ralat ToyyibPay` : "OK", "Semak TOYYIB_SECRET / TOYYIB_CATEGORY.");
+  add("Ralat pelayan (hari ini)", st.err_500 < 5, st.err_500 ? `${st.err_500} ralat. Terakhir: ${clip(s.last_err, 140)}` : "OK", "Hantar mesej ralat ini kepada Claude.");
+  add("Mod sandbox", s.toyyib_sandbox !== "1", s.toyyib_sandbox === "1" ? "MASIH AKTIF: pembeli sebenar tak boleh bayar" : "Mati (live)", "Tetapan → toyyib_sandbox = 0.");
+  const pend = await q("SELECT COUNT(*) n, MIN(updated) t FROM tester_subs WHERE status='pending'");
+  add("Video pengguji menunggu", !(pend.n && now() - pend.t > DAY), pend.n ? `${pend.n} menunggu semakan` : "Tiada", "/admin → 🧪 Pengguji.");
+  const pay = { live: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), mail: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), tgok: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) };
+  add("Kunci ToyyibPay live", pay.live, pay.live ? "Ada" : "Tiada: pesanan masuk mod manual", "Tambah secret TOYYIB_SECRET & TOYYIB_CATEGORY.");
+  add("Emel & Telegram", pay.mail && pay.tgok, `Emel ${pay.mail ? "✓" : "✗"} · Telegram ${pay.tgok ? "✓" : "✗"}`, "Lihat README langkah 4 & 5.");
+  return out;
+}
+async function watchdog(env, s) {
+  if (s.tg_alerts === "0") return;
+  const bad = (await health(env, s)).filter(c => c.ok === false && !/^(Kunci ToyyibPay|Emel & Telegram)/.test(c.name));
+  const nowT = now(), send = [];
+  for (const c of bad) {
+    const k = "wd:" + c.name, last = +(s[k] || 0), every = c.name === "Mod sandbox" ? 3 : 6;
+    if (nowT - last > every * 3600e3) { send.push(c); await setSetting(env, k, nowT); }
+  }
+  if (send.length) await tg(env, "🛡️ <b>Pengawas Jom Baca</b>\n" + send.map(c => `⚠️ <b>${c.name}</b>: ${c.detail}\n   ➜ ${c.fix}`).join("\n") + `\n${siteUrl(env, s)}/admin`);
+}
+
+/* ------------------------------------------------------------------ */
 /* Cron setiap 15 minit                                                */
 /* ------------------------------------------------------------------ */
 async function cron(env) {
@@ -1101,13 +1235,25 @@ async function cron(env) {
     const hot = await env.DB.prepare("SELECT COUNT(*) n FROM leads WHERE bought=0 AND contacted=0 AND phone!='' AND (stage='checkout' OR score>=60)").first();
     await tg(env, `📊 <b>Ringkasan hari ini</b>\nJualan: ${t.sale} (${rm(t.rev)}) / sasaran ${s.daily_sales_target}\nLawatan: ${t.lp_view} · Lead: ${t.lead} · Checkout: ${t.checkout}\n📌 Post manual menunggu: ${manual.n}\n📱 Lead panas untuk WhatsApp: ${hot.n}\n${siteUrl(env, s)}/admin`);
   }
-  if (h === 3 && m < 15) await env.DB.prepare("DELETE FROM claims WHERE ts<?").bind(now() - 30 * DAY).run();
+  if (m < 15) await watchdog(env, s).catch(e => console.log("watchdog", e));
+  if (h === 3 && m < 15) {
+    await env.DB.prepare("DELETE FROM claims WHERE ts<?").bind(now() - 30 * DAY).run();
+    if (env.MEDIA) {
+      const keep = Math.max(7, +s.video_keep_days || 90) * DAY;
+      const { results } = await env.DB.prepare("SELECT * FROM tester_subs WHERE (usage_key IS NOT NULL OR testi_key IS NOT NULL) AND ((status='rejected' AND reviewed_at<?) OR (status='approved' AND reviewed_at<? AND pub_parent=0 AND pub_child=0) OR (status='draft' AND updated<?))").bind(now() - 30 * DAY, now() - keep, now() - keep).all();
+      for (const t of results) { for (const k of [t.usage_key, t.testi_key]) if (k) await env.MEDIA.delete(k).catch(() => {}); await env.DB.prepare("UPDATE tester_subs SET usage_key=NULL, testi_key=NULL WHERE id=?").bind(t.id).run(); }
+    }
+  }
 }
 
 export default {
   async fetch(req, env, ctx) {
     try { return await handle(req, env, ctx); }
-    catch (e) { console.log("ERR", e && e.stack || e); return bad("Ralat pelayan: " + (e && e.message || e), 500); }
+    catch (e) {
+      console.log("ERR", e && e.stack || e);
+      ctx.waitUntil(Promise.all([bump(env, [["err_500"]]), setSetting(env, "last_err", new Date().toISOString() + " " + new URL(req.url).pathname + " " + clip(e && e.message || e, 300))]).catch(() => {}));
+      return bad("Ralat pelayan: " + (e && e.message || e), 500);
+    }
   },
   async scheduled(ev, env, ctx) { ctx.waitUntil(cron(env)); },
 };

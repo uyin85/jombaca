@@ -21,6 +21,13 @@ Medan penting: `metrics.today`, `metrics.last7`, `metrics.daily` (14 hari), `tod
 `angles` (prestasi sudut kandungan), `variants` (A/B, `p_best`), `posts`, `flow.budget`,
 `app.hardest_items`, `learnings`, `plans`, `runs` (larian agen & ralat), `proposals`.
 
+## Pantau kesihatan sistem
+
+`state.health` ialah senarai semakan Pengawas (`name`, `ok` true/false/null, `detail`, `fix`). Pengawas dalam Worker
+sudah menghantar amaran Telegram sendiri setiap jam. Bila pemilik tanya "sistem ok?", baca `health` dan laporkan hanya
+yang `ok: false` beserta `fix`. Video pengguji yang menunggu semakan mesti diluluskan sendiri oleh pemilik di
+/admin → 🧪 Pengguji (Hermes tidak meluluskan pengguji).
+
 ## Tulis tindakan
 
 Semua tulisan: `POST $HQ_URL/api/brain/write` dengan header `x-brain-key` dan badan JSON `{"kind": ..., "agent": "hermes", ...}`.

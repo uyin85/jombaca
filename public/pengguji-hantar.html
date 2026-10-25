@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hantar video pengguji: Jom Baca!</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<style>
+  main { padding: 26px 0 60px; }
+  .panel { margin-top: 18px; }
+  .status { border-radius: 14px; padding: 12px 14px; margin-top: 14px; font-size: 15px; background: var(--sky); }
+  .status.warn { background: #fff6db; }
+  .status.bad { background: #ffe3e8; }
+  .status.good { background: #dcf7e9; }
+  .vid { border: 2px dashed #c9d2e3; border-radius: 16px; padding: 14px; margin-top: 14px; }
+  .vid.ok { border-style: solid; border-color: var(--t-green, #17b26a); }
+  .vid h3 { margin: 0; font-size: 18px; }
+  .vid ul { margin: 8px 0 10px 18px; padding: 0; font-size: 14px; }
+  .vid input[type=file] { width: 100%; font-size: 15px; }
+  .bar { height: 10px; background: #e7ebf3; border-radius: 6px; overflow: hidden; margin-top: 10px; display: none; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--t-green, #17b26a); transition: width .2s; }
+  .vm { font-size: 14px; margin-top: 6px; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; margin-top: 12px; }
+  .consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+  textarea.in { min-height: 110px; resize: vertical; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a href="/app/" class="small">← Jom Baca!</a>
+  <h1 style="margin-top:12px">Hantar video pengguji</h1>
+  <p class="muted" style="margin-top:10px">Muat naik 2 video pendek. Selepas kami semak dan luluskan, lesen anda menjadi <b>Jom Baca Pro seumur hidup</b>.</p>
+  <div class="status" id="st">Memuatkan…</div>
+
+  <div class="panel" id="box" style="display:none">
+    <div class="vid" id="v_usage">
+      <h3>📱 Video 1: Anak sedang guna app</h3>
+      <ul>
+        <li>30 hingga 90 saat, anak bermain satu atau dua tahap.</li>
+        <li>Cukup rakam skrin dan tangan anak. <b>Muka anak tidak perlu ditunjukkan.</b></li>
+        <li>Pastikan suara app dan suara anak membaca boleh didengar.</li>
+      </ul>
+      <input type="file" accept="video/*" capture="environment" data-t="usage">
+      <div class="bar"><i></i></div><div class="vm"></div>
+    </div>
+    <div class="vid" id="v_testi">
+      <h3>🎤 Video 2: Testimoni anda</h3>
+      <ul>
+        <li>30 hingga 60 saat, anda bercakap ke kamera (kamera depan).</li>
+        <li>Ceritakan: umur anak, keadaan sebelum guna, apa yang berubah selepas beberapa hari.</li>
+        <li>Jujur sahaja. Kelemahan pun boleh disebut.</li>
+      </ul>
+      <input type="file" accept="video/*" capture="user" data-t="testi">
+      <div class="bar"><i></i></div><div class="vm"></div>
+    </div>
+
+    <label class="f" for="sum" style="margin-top:16px">Ringkasan pengalaman anda (2 hingga 3 ayat)</label>
+    <textarea class="in" id="sum" placeholder="Contoh: Anak saya 5 tahun, dulu kenal huruf sahaja. Selepas 8 hari dia dah boleh baca 'bola', 'buku', 'kaki' sendiri dan minta main setiap malam."></textarea>
+
+    <label class="consent"><input type="checkbox" id="c1"><span><b>(Wajib)</b> Saya izinkan pasukan Jom Baca menonton video ini untuk tujuan semakan. Video disimpan secara peribadi dan dipadam secara automatik.</span></label>
+    <label class="consent"><input type="checkbox" id="c2"><span>(Pilihan) Video testimoni saya dan ringkasan di atas boleh disiarkan di laman dan media sosial Jom Baca.</span></label>
+    <label class="consent"><input type="checkbox" id="c3"><span>(Pilihan) Video anak saya menggunakan app boleh disiarkan. Saya ibu bapa / penjaga sah anak ini.</span></label>
+    <p class="small muted" style="margin-top:10px">Anda boleh menarik balik izin siaran pada bila-bila masa dengan menghubungi kami. Keputusan izin siaran tidak menjejaskan kelulusan Pro anda.</p>
+
+    <div class="err" id="err" role="alert"></div>
+    <button class="btn" style="width:100%;margin-top:12px" id="send">Hantar untuk semakan</button>
+  </div>
+</main>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), key = (new URLSearchParams(location.search).get("k") || "").toUpperCase();
+  const have = { usage: false, testi: false };
+  const show = (cls, html) => { $("st").className = "status " + cls; $("st").innerHTML = html; };
+  const mark = (t, okd, msg) => { have[t] = okd; $("v_" + t).classList.toggle("ok", okd); $("v_" + t).querySelector(".vm").textContent = msg; };
+  if (!key) { show("bad", "Pautan tidak lengkap. Buka pautan dari emel pengguji anda."); return; }
+  fetch("/api/tester/me?k=" + encodeURIComponent(key)).then(r => r.json()).then(d => {
+    if (!d.ok) { show("bad", d.error || "Kod pengguji tidak sah."); return; }
+    const nm = (d.name || "").split(" ")[0];
+    if (d.status === "approved") { show("good", `🎉 Tahniah ${nm}! Lesen anda sudah <b>Pro seumur hidup</b>. <a href="/app/?lesen=${encodeURIComponent(key)}">Buka Jom Baca Pro</a>`); return; }
+    if (d.status === "pending") { show("good", `✅ Terima kasih ${nm}! Video anda sedang disemak. Kami akan maklumkan melalui emel dalam 1 hingga 2 hari bekerja.`); return; }
+    $("box").style.display = "block";
+    if (d.sub && d.sub.status === "rejected") show("bad", `Video sebelum ini perlu dihantar semula: <i>${String(d.sub.reason || "").replace(/</g, "&lt;")}</i>`);
+    else if (d.status === "expired") show("warn", `Hai ${nm}, tempoh percubaan Pro anda sudah tamat. Hantar 2 video di bawah untuk unlock semula, kali ini <b>seumur hidup</b>.`);
+    else show("warn", `Hai ${nm}! Percubaan Pro anda tinggal <b>${d.days_left} hari</b>. Hantar 2 video sebelum tamat.`);
+    if (d.sub && d.sub.status === "draft") { if (d.sub.usage) mark("usage", true, "✓ Video sudah dimuat naik. Pilih fail lain untuk ganti."); if (d.sub.testi) mark("testi", true, "✓ Video sudah dimuat naik. Pilih fail lain untuk ganti."); }
+  }).catch(() => show("bad", "Tiada sambungan internet. Muat semula halaman."));
+
+  document.querySelectorAll("input[type=file]").forEach(inp => inp.onchange = () => {
+    const f = inp.files[0], t = inp.dataset.t, box = $("v_" + t), bar = box.querySelector(".bar"), fill = bar.querySelector("i");
+    if (!f) return;
+    if (!/^video\//.test(f.type)) { mark(t, false, "Fail ini bukan video."); return; }
+    if (f.size > 95 * 1024 * 1024) { mark(t, false, `Video terlalu besar (${(f.size / 1048576).toFixed(0)}MB, maksimum 95MB). Rakam lebih pendek, atau rakam dalam kualiti 720p.`); return; }
+    const x = new XMLHttpRequest();
+    x.open("POST", `/api/tester/upload?k=${encodeURIComponent(key)}&type=${t}`);
+    x.setRequestHeader("content-type", f.type);
+    bar.style.display = "block"; fill.style.width = "0"; mark(t, false, "Memuat naik… jangan tutup halaman ini.");
+    x.upload.onprogress = e => { if (e.lengthComputable) { const pc = Math.round(e.loaded / e.total * 100); fill.style.width = pc + "%"; box.querySelector(".vm").textContent = `Memuat naik… ${pc}%`; } };
+    x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200 && j.ok) mark(t, true, `✓ Berjaya dimuat naik (${(f.size / 1048576).toFixed(1)}MB)`); else mark(t, false, j.error || "Gagal. Cuba lagi."); };
+    x.onerror = () => mark(t, false, "Sambungan terputus. Cuba lagi (lebih baik guna Wi-Fi).");
+    x.send(f);
+  });
+
+  $("send").onclick = async () => {
+    $("err").textContent = "";
+    if (!have.usage || !have.testi) { $("err").textContent = "Sila muat naik kedua-dua video dahulu."; return; }
+    if ($("sum").value.trim().length < 20) { $("err").textContent = "Sila tulis ringkasan pengalaman 2 hingga 3 ayat."; return; }
+    if (!$("c1").checked) { $("err").textContent = "Sila tandakan izin semakan (wajib)."; return; }
+    $("send").disabled = true;
+    try {
+      const r = await (await fetch("/api/tester/submit?k=" + encodeURIComponent(key), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ summary: $("sum").value.trim(), consent_review: true, pub_parent: $("c2").checked, pub_child: $("c3").checked }) })).json();
+      if (!r.ok) throw new Error(r.error || "Ralat");
+      $("box").style.display = "none";
+      show("good", "✅ Terima kasih! Video anda sudah dihantar untuk semakan. Akses Pro anda dilanjutkan 3 hari sementara menunggu. Kami akan emel keputusan dalam 1 hingga 2 hari bekerja.");
+      scrollTo(0, 0);
+    } catch (e) { $("err").textContent = e.message; $("send").disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>

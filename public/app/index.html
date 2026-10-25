@@ -1326,8 +1326,8 @@
       try {
         const r = await fetch(API + "/api/license/activate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, device: DEV }) });
         const j = await r.json();
-        if (!j.ok) { ev("act_fail"); return { ok: false, msg: j.error || "Kod tidak sah.", limit: !!j.limit, key }; }
-        LIC = { key, token: j.token, name: j.name || "", aff: j.aff || "", affk: j.aff_k || "" };
+        if (!j.ok) { ev(j.expired ? "trial_expired" : "act_fail"); return { ok: false, msg: j.error || "Kod tidak sah.", limit: !!j.limit, expired: !!j.expired, upload: j.upload, key }; }
+        LIC = { key, token: j.token, name: j.name || "", aff: j.aff || "", affk: j.aff_k || "", trialEnd: j.trial_days != null ? Date.now() + j.trial_days * 864e5 : 0 };
         lss("jb_lic", JSON.stringify(LIC));
         if (j.pack) lss("jb_pack", JSON.stringify(j.pack));
         ev("act_ok"); flush();
@@ -1351,11 +1351,13 @@
         const r = await fetch(API + "/api/content", { headers: { "x-lic": LIC.token } });
         if (r.status === 401 || r.status === 403) {
           const j = await r.json().catch(() => ({}));
+          if (j.expired) { ev("trial_expired"); flush(); const k = LIC.key; lsd("jb_lic"); lsd("jb_pack"); toast("Tempoh percubaan pengguji tamat. Hantar 2 video untuk unlock Pro seumur hidup.", 5000); setTimeout(() => { location.href = "/pengguji-hantar?k=" + encodeURIComponent(k); }, 5200); return; }
           if (j.revoked) { ev(j.removed ? "lic_removed" : "act_fail"); flush(); lsd("jb_lic"); lsd("jb_pack"); toast(j.removed ? "Lesen Pro telah dikeluarkan daripada peranti ini oleh pemilik lesen." : "Lesen Pro ini tidak lagi aktif.", 4000); setTimeout(() => location.reload(), 4200); }
           return;
         }
         if (!r.ok) return;
         const p = await r.json();
+        if ("trial_days" in p) { const te = p.trial_days == null ? 0 : Date.now() + p.trial_days * 864e5; if (!!te !== !!LIC.trialEnd || Math.abs(te - (LIC.trialEnd || 0)) > 36e5) { LIC.trialEnd = te; lss("jb_lic", JSON.stringify(LIC)); } }
         lss("jb_pack", JSON.stringify(p));
         const onMap = $("map").style.display === "flex", onStart = $("start").style.display !== "none";
         if (onStart || onMap) { applyPack(p); if (onMap) maps(); } else pendingPack = p;
@@ -1486,6 +1488,7 @@
       if (r.ok) { $("actMsg").style.color = "#17b26a"; $("actMsg").textContent = "✓ Pro diaktifkan! Memuatkan…"; setTimeout(() => location.reload(), 900); }
       else {
         $("actMsg").style.color = "#e0304f"; $("actMsg").textContent = r.msg;
+        if (r.expired && r.upload) { const a = document.createElement("a"); a.className = "btn2 grn"; a.style.cssText = "margin-top:8px;display:inline-block;text-decoration:none"; a.href = r.upload; a.textContent = "📹 Muat naik video pengguji"; $("actMsg").appendChild(document.createElement("br")); $("actMsg").appendChild(a); }
         if (r.limit) {
           const b = document.createElement("button"); b.className = "btn2 alt"; b.style.marginTop = "8px"; b.textContent = "📧 Hantar pautan reset ke emel pemilik lesen";
           b.onclick = async () => { b.disabled = true; ev("reset_req"); try { const x = await (await fetch(API + "/api/license/reset-request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: r.key }) })).json(); $("actMsg").style.color = "#2b2350"; $("actMsg").textContent = x.msg || "Pautan reset dihantar."; } catch (e) { $("actMsg").textContent = "Tiada sambungan internet."; } b.remove(); };
@@ -1547,7 +1550,7 @@
       $("prLevel").innerHTML = opts.join("");
       $("prNote").textContent = isPro() ? "Pilih tahap, kemudian pilih bahan. Simpan sebagai PDF atau cetak terus." : "Versi percuma: bahan cetak untuk 3 tahap pertama. Pro membuka semua tahap.";
       if (isPro()) {
-        $("pLic").innerHTML = `<h3>👑 Jom Baca Pro aktif</h3><div class="muted">Berlesen kepada: <b>${esc(LIC.name || "-")}</b> · Kod: ${esc(LIC.key.slice(0, 8))}••••</div><div class="row" style="margin-top:8px"><button class="btn2 alt" id="pSync">🔄 Semak kandungan baharu</button></div>`;
+        $("pLic").innerHTML = `<h3>👑 Jom Baca Pro aktif</h3><div class="muted">Berlesen kepada: <b>${esc(LIC.name || "-")}</b> · Kod: ${esc(LIC.key.slice(0, 8))}••••</div>${LIC.trialEnd ? `<div style="margin-top:8px;background:#fff6db;border-radius:12px;padding:10px">🧪 <b>Pengguji:</b> percubaan tinggal <b>${Math.max(0, Math.ceil((LIC.trialEnd - Date.now()) / 864e5))} hari</b>. <a href="/pengguji-hantar?k=${encodeURIComponent(LIC.key)}">Muat naik 2 video</a> untuk Pro seumur hidup.</div>` : ""}<div class="row" style="margin-top:8px"><button class="btn2 alt" id="pSync">🔄 Semak kandungan baharu</button></div>`;
         $("pSync").onclick = async () => { toast("Menyemak…"); await refreshPack(); toast("✓ Kandungan terkini"); renderParent(); };
       } else {
         $("pLic").innerHTML = `<h3>👑 Naik taraf ke Pro</h3><div class="muted">${CORE_N - FREE_N} tahap lagi, pek cerita mingguan, pusat cetak penuh, ujian kelancaran, 5 profil.</div><div class="row" style="margin-top:8px"><button class="btn2 grn" id="pBuy">Lihat Pro</button><button class="btn2 alt" id="pAct">Saya ada kod lesen</button></div>`;
@@ -1683,7 +1686,7 @@
     const q = new URLSearchParams(location.search), qk = q.get("lesen") || q.get("key");
     if (qk) {
       history.replaceState(null, "", location.pathname);
-      activate(qk).then(r => { if (r.ok) { toast("👑 Jom Baca Pro diaktifkan!"); setTimeout(() => location.reload(), 1200); } else { openPay("magic_fail"); $("actBox").open = true; $("actKey").value = qk; $("actMsg").textContent = r.msg; } });
+      activate(qk).then(r => { if (r.ok) { toast("👑 Jom Baca Pro diaktifkan!"); setTimeout(() => location.reload(), 1200); } else { if (r.expired && r.upload) { location.href = r.upload; return; } openPay("magic_fail"); $("actBox").open = true; $("actKey").value = qk; $("actMsg").textContent = r.msg; } });
     } else if (isPro()) setTimeout(refreshPack, 1500);
   })();
   </script>

@@ -139,7 +139,10 @@ Buka **/admin → ✅ Tugas Saya**:
 1. **Post manual**: 2 hingga 3 skrip TikTok/Reels. Rakam skrin app + suara anda, atau guna klip Flow. Tekan "Sudah post".
 2. **Lead panas**: tekan WhatsApp (mesej sudah ditulis agen), hantar secara peribadi, tekan "Tanda dihubungi".
 3. **Cadangan agen**: terima atau tolak.
-4. Mingguan: bayar komisen affiliate (Affiliate → Tanda dibayar).
+4. **🧪 Pengguji**: tonton 2 video yang dihantar, tekan Luluskan (jadi Pro seumur hidup) atau Tolak dengan sebab.
+5. Mingguan: bayar komisen affiliate (Affiliate → Tanda dibayar).
+
+**🛡️ Pengawas** dalam Worker menyemak sistem setiap jam (otak AI berhenti, ralat agen, emel/post gagal, ralat bayaran, ralat pelayan, sandbox tertinggal, video pengguji menunggu) dan menghantar amaran Telegram. Status penuh di kad atas /admin → Ringkasan. Matikan dengan tetapan `tg_alerts = 0`.
 
 Pagi 06:00 anda terima pelan CEO di Telegram, dan 22:00 ringkasan jualan.
 
@@ -204,6 +207,8 @@ HQ_URL=http://127.0.0.1:8787 BRAIN_KEY=b BRAIN_DRY=1 GEMINI_API_KEY=... python -
 
 ## Log perubahan
 
+- **v2.3 (25 Okt 2026):** pengguji dapat Pro percubaan 10 hari dan wajib muat naik 2 video (anak guna app + testimoni) di /pengguji-hantar; pemilik semak & luluskan di /admin → 🧪 Pengguji. Video disimpan peribadi dalam R2 (pautan bertandatangan, dipadam auto selepas `video_keep_days`). Pengawas sistem + amaran Telegram.
+- **v2.2:** program 10 pengguji awal, had 3 peranti setiap lesen, reset peranti melalui emel, testimoni dengan izin.
 - **v2.1 (25 Okt 2026):** kurikulum 40 tahap ikut pola KV → KVK → KVKK, mod Autisme/Disleksia/Ketik Jawapan, permainan bunyi, soalan pemahaman, ujian penempatan & kelancaran.
 - **v2.0.1:** pembetulan Bahasa Melayu (sapi → satu, jidar → jiran, dll.), suara ms-MY diutamakan.
 - **v2.0:** Jom Baca Pro + HQ + otak multi-agen.

@@ -47,7 +47,7 @@ const list=(t,f='')=>api('/api/admin/list?t='+t+'&f='+f).then(j=>j.rows||[]);
 function logout(){KEY='';try{localStorage.removeItem('hq_key')}catch(e){}$('#hdr').style.display='none';$('#main').innerHTML='';$('#login').style.display='block'}
 $('#kb').onclick=async()=>{KEY=$('#k').value.trim();try{await api('/api/admin/overview');try{localStorage.setItem('hq_key',KEY)}catch(e){}boot()}catch(e){$('#ke').textContent='Kunci salah.'}};
 $('#out').onclick=logout;
-const TABS=[['home','📊 Ringkasan'],['todo','✅ Tugas Saya'],['posts','📣 Kandungan'],['flow','🎬 Flow'],['leads','🧲 Leads'],['sales','💰 Jualan'],['aff','🤝 Affiliate'],['ab','🧪 A/B'],['prod','📚 Produk'],['brain','🧠 Otak AI'],['set','⚙️ Tetapan']];
+const TABS=[['home','📊 Ringkasan'],['todo','✅ Tugas Saya'],['posts','📣 Kandungan'],['flow','🎬 Flow'],['leads','🧲 Leads'],['sales','💰 Jualan'],['aff','🤝 Affiliate'],['tester','🧪 Pengguji'],['ab','🔀 A/B'],['prod','📚 Produk'],['brain','🧠 Otak AI'],['set','⚙️ Tetapan']];
 let tab='home';
 function nav(){$('#nav').innerHTML=TABS.map(([k,l])=>`<button data-t="${k}" class="${k===tab?'on':''}">${l}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;nav();render()})}
 function boot(){$('#login').style.display='none';$('#hdr').style.display='flex';nav();render()}
@@ -57,11 +57,35 @@ const wa=(phone,msg)=>`https://wa.me/${phone}?text=${encodeURIComponent(msg||'')
 const copy=t=>{try{navigator.clipboard.writeText(t)}catch(e){}};
 async function render(){const m=$('#main');m.innerHTML='<p class="mut">Memuatkan…</p>';try{await VIEWS[tab](m)}catch(e){if(e.message!=='auth')m.innerHTML='<p class="badc">Ralat: '+esc(e.message)+'</p>'}}
 const VIEWS={
+async tester(m){const R=await list('testers');
+ const pend=R.filter(r=>r.status==='pending');
+ const sz=b=>b?(b/1048576).toFixed(1)+'MB':'';
+ const stl=r=>!r.expires?'<span class="tag ok">✓ Pro seumur hidup</span>':r.status==='pending'?'<span class="tag warn">⏳ Menunggu semakan</span>':r.status==='rejected'?'<span class="tag badc">✗ Ditolak, hantar semula</span>':r.days_left>0?`<span class="tag">🧪 Percubaan, ${r.days_left} hari lagi</span>`:'<span class="tag badc">⌛ Tamat, tiada video</span>';
+ const vid=(u,l,b)=>u?`<div style="flex:1;min-width:220px"><b>${l}</b> <span class="mut">${sz(b)}</span><video src="${u}" controls preload="metadata" playsinline style="width:100%;max-height:360px;background:#000;border-radius:10px;margin-top:4px"></video></div>`:`<div class="mut" style="flex:1">${l}: belum dimuat naik</div>`;
+ m.innerHTML=`<div class="card"><h2>🧪 Program Pengguji</h2><p class="mut">Pengguji dapat Pro percubaan, wajib hantar 2 video (anak guna app + testimoni). Anda tonton, kemudian <b>Luluskan</b> (jadi Pro seumur hidup + emel tahniah) atau <b>Tolak</b> dengan sebab (pengguji dapat 3 hari untuk hantar semula). Pautan video peribadi dan tamat dalam 2 jam: muat semula tab ini jika video tak main.</p>
+ <div class="row"><span class="tag">${R.length} pengguji</span><span class="tag warn">${pend.length} menunggu semakan</span><span class="tag ok">${R.filter(r=>!r.expires).length} diluluskan</span></div></div>
+ ${R.map(r=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${esc(r.name)}</b> ${stl(r)}<div class="mut">${esc(r.email)} · ${esc(r.phone||'')} · ${esc(r.key)} · daftar ${dt(r.created)}</div></div>
+  <div class="row">${r.phone?`<a class="b" target="_blank" href="${wa(String(r.phone).replace(/\D/g,'').replace(/^0/,'60'),'Hai '+String(r.name||'').split(' ')[0]+', ini pasukan Jom Baca. ')}">💬 WhatsApp</a>`:''}${r.expires?`<button data-a="ext" data-id="${esc(r.key)}">+7 hari</button>`:''}</div></div>
+  ${r.sub_id&&(r.usage_url||r.testi_url||r.summary)?`<div class="row" style="align-items:flex-start;margin-top:10px">${vid(r.usage_url,'📱 Anak guna app',r.usage_size)}${vid(r.testi_url,'🎤 Testimoni',r.testi_size)}</div>
+  ${r.summary?`<p style="margin:10px 0 4px"><b>Ringkasan:</b> ${esc(r.summary)}</p>`:''}
+  <div class="mut">Izin siar: testimoni ibu bapa ${r.pub_parent?'<b class="ok">YA</b>':'tidak'} · video anak ${r.pub_child?'<b class="ok">YA</b>':'tidak'}${r.reason?` · sebab tolak dahulu: ${esc(r.reason)}`:''}</div>
+  <div class="row" style="margin-top:8px">${r.status==='pending'?`<button class="g" data-a="ok" data-id="${r.sub_id}">✓ Luluskan → Pro seumur hidup</button><button class="r" data-a="no" data-id="${r.sub_id}">✗ Tolak + sebab</button>`:''}
+  ${r.usage_url&&r.pub_child?`<a class="b" href="${r.usage_url}" download>⬇️ Muat turun video anak</a>`:''}${r.testi_url&&r.pub_parent?`<a class="b" href="${r.testi_url}" download>⬇️ Muat turun testimoni</a>`:''}
+  ${r.usage_url||r.testi_url?`<button class="r" data-a="del" data-id="${r.sub_id}">🗑️ Padam video</button>`:''}</div>`:''}</div>`).join('')}`;
+ bind(m,{
+  ok:async id=>{if(!confirm('Luluskan pengguji ini? Lesen jadi Pro seumur hidup dan emel tahniah dihantar.'))return;await act('tester_approve',{id});render()},
+  no:async id=>{const reason=prompt('Sebab ditolak (dihantar kepada pengguji melalui emel):','Video kurang jelas. Sila rakam semula dengan suara app dan anak boleh didengar.');if(reason==null)return;await act('tester_reject',{id,reason});render()},
+  ext:async key=>{await act('tester_extend',{key,days:7});render()},
+  del:async id=>{if(!confirm('Padam kedua-dua video ini secara kekal?'))return;await act('tester_delvid',{id});render()}});
+},
 async home(m){const o=await api('/api/admin/overview');const t=o.today,w=o.d7,mo=o.d28;const cr=(a,b)=>b?(100*a/b).toFixed(1)+'%':'-';
  const ser=o.series;const mx=Math.max(1,...ser.map(x=>x.sale));const ml=Math.max(1,...ser.map(x=>x.lead));
  const I=o.integrations;const st=(k,l)=>`<span class="tag ${I[k]?'ok':'warn'}">${I[k]?'✓':'✗'} ${l}</span>`;
  const tg=+o.s.daily_sales_target;
- m.innerHTML=`<div class="grid">
+ const H=o.health||[],hb=H.filter(c=>c.ok===false);
+ const hrow=c=>`<div style="padding:6px 0;border-top:1px solid var(--line)">${c.ok===false?'⚠️':c.ok===null?'➖':'✅'} <b>${esc(c.name)}</b>: ${esc(c.detail)}${c.ok===false?`<div class="mut" style="margin-left:22px">➜ ${esc(c.fix)}</div>`:''}</div>`;
+ const hc=`<div class="card" style="border-color:${hb.length?'var(--bad)':'var(--ok)'}"><h2>🛡️ Pengawas sistem: ${hb.length?`<span class="badc">${hb.length} perlu perhatian</span>`:'<span class="ok">semua OK</span>'}</h2>${hb.map(hrow).join('')}<details style="margin-top:6px"><summary class="mut">Semua semakan (${H.length}) · disemak setiap jam, amaran ke Telegram</summary>${H.filter(c=>c.ok!==false).map(hrow).join('')}</details></div>`;
+ m.innerHTML=hc+`<div class="grid">
  <div class="card kpi"><small>Jualan hari ini</small><b class="${t.sale>=tg?'ok':''}">${t.sale} / ${tg}</b><small>${rm(t.rev)}</small></div>
  <div class="card kpi"><small>7 hari</small><b>${w.sale}</b><small>${rm(w.rev)}</small></div>
  <div class="card kpi"><small>28 hari</small><b>${mo.sale}</b><small>${rm(mo.rev)}</small></div>
@@ -75,6 +99,7 @@ async home(m){const o=await api('/api/admin/overview');const t=o.today,w=o.d7,mo
  <li><a data-go="aff">${o.todo.payouts} komisen</a> belum dibayar (${rm(o.todo.payout_amt)})</li>
  <li><a data-go="todo">${o.todo.proposals} cadangan</a> daripada agen</li>
  <li><a data-go="flow">${o.todo.flow_queue} video Flow</a> dalam giliran</li>
+ ${(()=>{const t=H.find(c=>/^Video pengguji/.test(c.name));return t&&t.detail!=='Tiada'?`<li class="warn"><a data-go="tester">📹 ${esc(t.detail)}</a> (video pengguji)</li>`:''})()}
  ${o.todo.failed_posts?`<li class="badc"><a data-go="posts">${o.todo.failed_posts} post gagal</a> (3 hari)</li>`:''}</ul></div>
  <div class="card"><h2>Pelan hari ini ${o.plan?`<span class="mut">(${o.plan.day})</span>`:''}</h2>${o.plan?`<pre>${esc(JSON.stringify(o.plan,null,1))}</pre>`:'<p class="mut">Belum ada. Agen CEO akan tulis pelan setiap pagi.</p>'}</div>
  <div class="card"><h2>Integrasi</h2><div class="row">${st('toyyibpay','ToyyibPay')}${I.toyyib_sandbox?'<span class="tag warn">🧪 Sandbox AKTIF</span>':''}${st('email','Emel')}${st('telegram','Telegram')}${st('threads','Threads')}${st('facebook','FB Page')}${st('tg_channel','Saluran Telegram')}${st('brain','Otak AI')}${st('r2','R2 media')}</div></div>`;
