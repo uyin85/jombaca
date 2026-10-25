@@ -4,6 +4,8 @@ name = "jombaca"
 main = "src/worker.js"
 compatibility_date = "2025-09-01"
 workers_dev = true
+# Domain sendiri (Custom Domain). workers.dev kekal hidup sebagai sandaran untuk otak AI & pautan lama.
+routes = [{ pattern = "jombaca.wmartz.com", custom_domain = true }]
 
 [assets]
 directory = "./public"
@@ -30,7 +32,7 @@ fallthrough = true
 
 [vars]
 # Kosongkan untuk guna domain workers.dev automatik. Isi jika guna domain sendiri, cth "https://jombaca.my"
-SITE_URL = ""
+SITE_URL = "https://jombaca.wmartz.com"
 TOYYIB_SANDBOX = "0"
 
 # RAHSIA (tetapkan di Dashboard → Worker → Settings → Variables and Secrets → Add → Secret):
