@@ -128,6 +128,8 @@ def choose_template(st, kind, used_today):
         n = r.get("posts") or 0
         avg = eng({k: r.get(k) or 0 for k in ("sales", "leads", "clicks", "likes", "comments", "shares", "views")}) / max(1, n)
         w = (1 + avg) ** 0.5 * (2.0 if n < 3 else 1.0) * (0.15 if t in recent else 1.0)  # punca kuasa dua: pemenang lebih kerap, tapi tak monopoli
+        if t in used_today and len(set(used_today)) < len(names):
+            w = 0.0  # templat yang sama tidak diulang dalam hari yang sama selagi ada pilihan lain
         weights.append(w)
     return random.choices(names, weights=weights)[0]
 
