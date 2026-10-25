@@ -1004,7 +1004,7 @@ async function brainWrite(env, kind, d, agent) {
     case "heartbeat": {
       await setSetting(env, "brain_seen", now());
       await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-");
-      const mt = s.media_test_req === "1";
+      const mt = s.media_test_req === "1" && d.via === "modal";
       if (mt) await setSetting(env, "media_test_req", "0");
       return { ok: true, media_test: mt };
     }
