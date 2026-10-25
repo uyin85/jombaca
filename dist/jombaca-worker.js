@@ -159,11 +159,23 @@ async brain(m){const [runs,ls,pr,plans,em]=await Promise.all([list('runs'),list(
  <div class="card"><h2>Emel</h2>\${table(em,[['created','Bila',dt],['to_email','Kepada'],['kind','Jenis'],['subject','Subjek'],['send_at','Jadual',dt],['status','Status'],['clicks','Klik'],['error','Ralat']])}</div>\`;
  $('#ladd').onclick=async()=>{await act('learning_add',{text:$('#ln').value});render()};
  bind(m,{lr:async id=>{await act('learning_status',{id,status:'retired'});render()},po:async id=>{await act('prompt_off',{id});render()}})},
-async set(m){const rows=await list('settings');
+async set(m){const [rows,ov]=await Promise.all([list('settings'),api('/api/admin/overview')]);const IG=ov.integrations||{};
  const help={price_sen:'Harga dalam sen (2000 = RM20)',floor_sen:'Harga minimum selepas kupon (agen tak boleh turun bawah ini)',aff_rate_pct:'% komisen affiliate',guarantee_days:'Hari jaminan wang dikembalikan (0 = tak papar). Hanya hidupkan jika anda sanggup refund.',auto_post:'1 = agen boleh auto-post ke Threads/FB/Telegram',auto_variants:'1 = agen boleh tukar varian laman jualan',auto_publish_packs:'1 = pek cerita yang lulus semakan keselamatan terus diterbitkan',auto_coupons:'1 = agen boleh cipta kupon promo (dalam had floor)',max_posts_day:'Had post sehari setiap platform',daily_sales_target:'Sasaran jualan sehari',flow_accounts:'Nama akaun Flow, dipisah koma',flow_credits_month:'Kredit sebulan setiap akaun',flow_cost:'Kredit per video',wa_number:'No WhatsApp sokongan (601xxxxxxxx)',support_email:'Emel sokongan',email_from:'Pengirim emel, cth: Jom Baca <hello@domain.com> (mesti disahkan di Brevo/Resend)',manual_pay_text:'Teks bila ToyyibPay belum disetup',toyyib_sandbox:'1 = mod UJIAN ToyyibPay (dev.toyyibpay.com, guna secret TOYYIB_SANDBOX_SECRET & TOYYIB_SANDBOX_CATEGORY). Tukar balik ke 0 selepas uji!',promo:'Promo aktif (diurus agen)',aff_swipe:'Bahan promosi affiliate (diurus agen)',nurture_tpl:'Template emel nurture (diurus agen; kosong = lalai)'};
- m.innerHTML=\`<div class="card"><h2>\u2699\uFE0F Tetapan</h2>\${table(rows,[['k','Kunci',v=>\`<b>\${esc(v)}</b><div class="mut" style="font-size:12px;max-width:320px">\${esc(help[v]||'')}</div>\`],['v','Nilai',(v,r)=>String(v).length>80?\`<textarea data-k="\${esc(r.k)}">\${esc(v)}</textarea>\`:\`<input data-k="\${esc(r.k)}" value="\${esc(v)}" style="width:100%">\`]],r=>\`<button class="p" data-a="sv" data-id="\${esc(r.k)}">Simpan</button>\`)}</div>
+ m.innerHTML=\`<div class="card"><h2>\u{1F4F1} Media sosial (auto-post)</h2>\${(()=>{const g=k=>(rows.find(r=>r.k===k)||{}).v||'';const tu=IG.threads_user,fp=IG.fb_page;return \`
+ <h3>Threads \${tu?\`<span class="tag ok">\u2713 @\${esc(tu)}</span>\`:'<span class="tag warn">belum disambung</span>'}</h3>
+ <p class="mut">Tampal token akses Threads (dari Meta for Developers \u2192 app anda \u2192 Threads API \u2192 User Token Generator). Sistem tukar kepada token 60 hari dan perbaharui sendiri setiap minggu.</p>
+ <div class="row"><input id="thk" type="password" placeholder="Token Threads" style="flex:1;min-width:200px"><button class="p" data-a="thc">Sambung Threads</button>\${tu?'<button class="r" data-a="thd">Putuskan</button>':''}</div>
+ <h3>Facebook Page \${fp?\`<span class="tag ok">\u2713 \${esc(fp)}</span>\`:'<span class="tag warn">belum disambung</span>'}</h3>
+ <p class="mut">Tampal User Token dari Graph API Explorer (kebenaran pages_manage_posts, pages_read_engagement). Sistem cari Page anda dan simpan token Page.</p>
+ <div class="row"><input id="fbk" type="password" placeholder="Token Facebook" style="flex:1;min-width:200px"><input id="fbn" placeholder="Nama Page (pilihan)" style="width:170px"><button class="p" data-a="fbc">Sambung FB Page</button>\${fp?'<button class="r" data-a="fbd">Putuskan</button>':''}</div>
+ <p class="mut" style="margin-top:8px">Auto-post hanya berjalan bila <b>auto_post = 1</b> (semasa: \${esc(g('auto_post')||'-')}).</p>\`})()}</div>
+ <div class="card"><h2>\u2699\uFE0F Tetapan</h2>\${table(rows,[['k','Kunci',v=>\`<b>\${esc(v)}</b><div class="mut" style="font-size:12px;max-width:320px">\${esc(help[v]||'')}</div>\`],['v','Nilai',(v,r)=>String(v).length>80?\`<textarea data-k="\${esc(r.k)}">\${esc(v)}</textarea>\`:\`<input data-k="\${esc(r.k)}" value="\${esc(v)}" style="width:100%">\`]],r=>\`<button class="p" data-a="sv" data-id="\${esc(r.k)}">Simpan</button>\`)}</div>
  <div class="card"><h2>Ujian</h2><div class="row"><input id="te" placeholder="emel anda"><button data-a="te">Hantar emel ujian</button><button data-a="tt">Ujian Telegram</button><button data-a="tk">Jalankan cron sekarang (post + emel)</button></div></div>\`;
- bind(m,{sv:async k=>{const el=m.querySelector(\`[data-k="\${k}"]\`);await act('setting_set',{k,v:el.value});el.style.borderColor='var(--ok)'},te:async()=>{const j=await act('test_email',{to:$('#te').value});alert(j.ok?'\u2713 Dihantar':'Gagal: '+j.error)},tt:async()=>{const j=await act('test_tg');alert(j.ok?'\u2713 Telegram OK':'Gagal: semak TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID')},tk:async()=>{await act('tick');alert('\u2713 Cron dijalankan')}})},
+ bind(m,{sv:async k=>{const el=m.querySelector(\`[data-k="\${k}"]\`);await act('setting_set',{k,v:el.value});el.style.borderColor='var(--ok)'},te:async()=>{const j=await act('test_email',{to:$('#te').value});alert(j.ok?'\u2713 Dihantar':'Gagal: '+j.error)},tt:async()=>{const j=await act('test_tg');alert(j.ok?'\u2713 Telegram OK':'Gagal: semak TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID')},tk:async()=>{await act('tick');alert('\u2713 Cron dijalankan')},
+  thc:async()=>{const j=await act('threads_connect',{token:$('#thk').value});alert(j.ok?'\u2713 Threads disambung: @'+j.username+(j.exchanged?' (token 60 hari)':''):'Gagal: '+j.error);render()},
+  fbc:async()=>{const j=await act('fb_connect',{token:$('#fbk').value,page:$('#fbn').value});alert(j.ok?'\u2713 FB Page disambung: '+j.page+(j.long_lived?'':'\\n\u26A0\uFE0F Token Page mungkin tamat dalam 1 jam: tambah secret FB_APP_ID & FB_APP_SECRET untuk token kekal.'):'Gagal: '+j.error);render()},
+  thd:async()=>{if(confirm('Putuskan Threads?')){await act('social_disconnect',{p:'threads'});render()}},
+  fbd:async()=>{if(confirm('Putuskan FB Page?')){await act('social_disconnect',{p:'fb'});render()}}})},
 };
 if(KEY)api('/api/admin/overview').then(boot).catch(()=>logout());else logout();
 </script>
@@ -669,6 +681,55 @@ async function postTelegram(env, p, text) {
   if (!j.ok) throw new Error("telegram " + JSON.stringify(j).slice(0, 200));
   return { id: String(j.result.message_id), done: true };
 }
+function withSocial(env, s) {
+  if (!s) return env;
+  return { ...env, THREADS_USER_ID: env.THREADS_USER_ID || s.threads_user_id || "", THREADS_TOKEN: env.THREADS_TOKEN || s.threads_token || "", FB_PAGE_ID: env.FB_PAGE_ID || s.fb_page_id || "", FB_PAGE_TOKEN: env.FB_PAGE_TOKEN || s.fb_page_token || "" };
+}
+var TH_API = "https://graph.threads.net";
+async function threadsConnect(env, token) {
+  token = String(token || "").trim();
+  if (!token) throw new Error("Tampal token Threads dahulu.");
+  let tk = token, exp = 0, exchanged = false;
+  if (env.THREADS_APP_SECRET) {
+    const j = await fetch(`${TH_API}/access_token?grant_type=th_exchange_token&client_secret=${encodeURIComponent(env.THREADS_APP_SECRET)}&access_token=${encodeURIComponent(token)}`).then((r) => r.json()).catch(() => ({}));
+    if (j.access_token) {
+      tk = j.access_token;
+      exp = now() + (+j.expires_in || 60 * 86400) * 1e3;
+      exchanged = true;
+    }
+  }
+  const me = await fetch(`${TH_API}/v1.0/me?fields=id,username&access_token=${encodeURIComponent(tk)}`).then((r) => r.json()).catch(() => ({}));
+  if (!me.id) throw new Error("Token Threads tidak sah: " + JSON.stringify(me.error || me).slice(0, 200));
+  for (const [k, v] of [["threads_token", tk], ["threads_user_id", me.id], ["threads_username", me.username || ""], ["threads_token_refreshed", now()], ["threads_token_exp", exp || now() + 60 * DAY]]) await setSetting(env, k, v);
+  return { ok: true, username: me.username, exchanged };
+}
+async function threadsRefresh(env, s) {
+  if (!s.threads_token || now() - +(s.threads_token_refreshed || 0) < 7 * DAY) return;
+  const j = await fetch(`${TH_API}/refresh_access_token?grant_type=th_refresh_token&access_token=${encodeURIComponent(s.threads_token)}`).then((r) => r.json()).catch(() => ({}));
+  if (!j.access_token) {
+    console.log("threads refresh", JSON.stringify(j).slice(0, 200));
+    return;
+  }
+  await setSetting(env, "threads_token", j.access_token);
+  await setSetting(env, "threads_token_refreshed", now());
+  await setSetting(env, "threads_token_exp", now() + (+j.expires_in || 60 * 86400) * 1e3);
+}
+async function fbConnect(env, token, pageName) {
+  token = String(token || "").trim();
+  if (!token) throw new Error("Tampal token Facebook dahulu.");
+  const G = "https://graph.facebook.com/v21.0";
+  let ut = token;
+  if (env.FB_APP_ID && env.FB_APP_SECRET) {
+    const j = await fetch(`${G}/oauth/access_token?grant_type=fb_exchange_token&client_id=${env.FB_APP_ID}&client_secret=${encodeURIComponent(env.FB_APP_SECRET)}&fb_exchange_token=${encodeURIComponent(token)}`).then((r) => r.json()).catch(() => ({}));
+    if (j.access_token) ut = j.access_token;
+  }
+  const acc = await fetch(`${G}/me/accounts?fields=id,name,access_token&access_token=${encodeURIComponent(ut)}`).then((r) => r.json()).catch(() => ({}));
+  const pages = acc.data || [];
+  if (!pages.length) throw new Error("Tiada Page ditemui untuk token ini. Pastikan kebenaran pages_manage_posts dan pages_read_engagement dipilih. " + (acc.error ? acc.error.message : ""));
+  const pg = pages.find((p) => pageName && p.name.toLowerCase().includes(String(pageName).toLowerCase())) || pages[0];
+  for (const [k, v] of [["fb_page_id", pg.id], ["fb_page_token", pg.access_token], ["fb_page_name", pg.name], ["fb_long", ut !== token ? "1" : "0"]]) await setSetting(env, k, v);
+  return { ok: true, page: pg.name, pages: pages.map((p) => p.name), long_lived: ut !== token };
+}
 function canAuto(env, platform) {
   if (platform === "threads") return !!(env.THREADS_USER_ID && env.THREADS_TOKEN);
   if (platform === "facebook") return !!(env.FB_PAGE_ID && env.FB_PAGE_TOKEN);
@@ -676,6 +737,7 @@ function canAuto(env, platform) {
   return false;
 }
 async function publishDue(env, s) {
+  env = withSocial(env, s);
   const site = siteUrl(env, s);
   const { results } = await env.DB.prepare("SELECT * FROM posts WHERE status IN ('scheduled','processing') AND scheduled_at<=? ORDER BY scheduled_at LIMIT 4").bind(now()).all();
   let n = 0;
@@ -789,7 +851,7 @@ async function overview(env) {
     series: ser,
     todo: { manual_posts: manual.n, hot_leads: hot.n, payouts: payouts.n, payout_amt: payouts.amt, proposals: props.n, flow_queue: flowQ.n, failed_posts: failed.n },
     plan: plan ? { day: plan.day, ...parseJ(plan.json, {}) } : null,
-    integrations: { toyyibpay: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), toyyib_sandbox: s.toyyib_sandbox === "1" && !!(env.TOYYIB_SANDBOX_SECRET && env.TOYYIB_SANDBOX_CATEGORY), email: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), threads: canAuto(env, "threads"), facebook: canAuto(env, "facebook"), tg_channel: canAuto(env, "telegram"), brain: !!env.BRAIN_KEY, r2: !!env.MEDIA }
+    integrations: { toyyibpay: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), toyyib_sandbox: s.toyyib_sandbox === "1" && !!(env.TOYYIB_SANDBOX_SECRET && env.TOYYIB_SANDBOX_CATEGORY), email: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), telegram: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), threads: canAuto(withSocial(env, s), "threads"), facebook: canAuto(withSocial(env, s), "facebook"), threads_user: s.threads_username || "", fb_page: s.fb_page_name || "", tg_channel: canAuto(env, "telegram"), brain: !!env.BRAIN_KEY, r2: !!env.MEDIA }
   };
 }
 async function brainState(env, agent) {
@@ -1473,7 +1535,7 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
         angles: "SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC",
         prompts: "SELECT * FROM agent_prompts ORDER BY id DESC LIMIT 50",
         plans: "SELECT * FROM plans ORDER BY day DESC LIMIT 14",
-        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v') AND k NOT LIKE 'wd:%'",
+        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
         app: "SELECT k, SUM(n) n FROM stats WHERE day>=date('now','-13 day') AND (k LIKE 'app:%' OR k LIKE 'src:%' OR k LIKE 'ref:%') GROUP BY k ORDER BY n DESC LIMIT 200"
       };
       if (!Q[t]) return bad("t?");
@@ -1521,6 +1583,13 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
         }
         case "lic_reset":
           await run("UPDATE licenses SET devices='[]', fails=0 WHERE key=?", clip(d.key, 30));
+          break;
+        case "threads_connect":
+          return J(await threadsConnect(env, d.token).catch((e) => ({ ok: false, error: e.message })));
+        case "fb_connect":
+          return J(await fbConnect(env, d.token, d.page).catch((e) => ({ ok: false, error: e.message })));
+        case "social_disconnect":
+          for (const k of d.p === "fb" ? ["fb_page_id", "fb_page_token", "fb_page_name"] : ["threads_token", "threads_user_id", "threads_username", "threads_token_exp"]) await run("DELETE FROM settings WHERE k=?", k);
           break;
         case "tester_approve": {
           const t = await env.DB.prepare("SELECT t.*, l.email, l.name FROM tester_subs t JOIN licenses l ON l.key=t.lic WHERE t.id=?").bind(+id).first();
@@ -1642,6 +1711,10 @@ async function health(env, s) {
   add("Pembayaran (hari ini)", st.pay_error < 2, st.pay_error ? `${st.pay_error} ralat ToyyibPay` : "OK", "Semak TOYYIB_SECRET / TOYYIB_CATEGORY.");
   add("Ralat pelayan (hari ini)", st.err_500 < 5, st.err_500 ? `${st.err_500} ralat. Terakhir: ${clip(s.last_err, 140)}` : "OK", "Hantar mesej ralat ini kepada Claude.");
   add("Mod sandbox", s.toyyib_sandbox !== "1", s.toyyib_sandbox === "1" ? "MASIH AKTIF: pembeli sebenar tak boleh bayar" : "Mati (live)", "Tetapan \u2192 toyyib_sandbox = 0.");
+  if (s.threads_token) {
+    const dl = (+(s.threads_token_exp || 0) - now()) / DAY;
+    add("Token Threads", dl > 7, `@${s.threads_username || "?"} \xB7 tamat dalam ${Math.max(0, Math.floor(dl))} hari`, "Sambung semula di /admin \u2192 \u2699\uFE0F Tetapan \u2192 Media sosial.");
+  }
   const pend = await q("SELECT COUNT(*) n, MIN(updated) t FROM tester_subs WHERE status='pending'");
   add("Video pengguji menunggu", !(pend.n && now() - pend.t > DAY), pend.n ? `${pend.n} menunggu semakan` : "Tiada", "/admin \u2192 \u{1F9EA} Pengguji.");
   const pay = { live: !!(env.TOYYIB_SECRET && env.TOYYIB_CATEGORY), mail: !!((env.BREVO_API_KEY || env.RESEND_API_KEY) && s.email_from), tgok: !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) };
@@ -1684,6 +1757,7 @@ ${siteUrl(env, s)}/admin`);
   }
   if (m < 15) await watchdog(env, s).catch((e) => console.log("watchdog", e));
   if (h === 3 && m < 15) {
+    await threadsRefresh(env, s).catch((e) => console.log("threads refresh", e));
     await env.DB.prepare("DELETE FROM claims WHERE ts<?").bind(now() - 30 * DAY).run();
     if (env.MEDIA) {
       const keep = Math.max(7, +s.video_keep_days || 90) * DAY;

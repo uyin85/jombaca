@@ -44,5 +44,6 @@ TOYYIB_SANDBOX = "0"
 #  BREVO_API_KEY  atau  RESEND_API_KEY       emel
 #  TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID      notifikasi kepada anda
 #  TELEGRAM_CHANNEL_ID                       (pilihan) auto-post ke saluran
-#  THREADS_USER_ID, THREADS_TOKEN            (pilihan) auto-post Threads
-#  FB_PAGE_ID, FB_PAGE_TOKEN                 (pilihan) auto-post Facebook Page
+#  THREADS_APP_SECRET                        (disyorkan) supaya token Threads yang ditampal di /admin ditukar ke token 60 hari
+#  FB_APP_ID, FB_APP_SECRET                  (disyorkan) supaya token Page FB yang ditampal di /admin tidak tamat
+#  (Token Threads/FB sendiri ditampal di /admin → Tetapan → Media sosial; THREADS_TOKEN/FB_PAGE_TOKEN sebagai secret masih disokong)
