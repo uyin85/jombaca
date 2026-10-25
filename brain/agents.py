@@ -96,6 +96,73 @@ def metrics_summary(st):
 
 
 # ---------------------------------------------------------------- bandit sudut
+def eng(p):
+    """Markah prestasi satu post: jualan & lead paling berat, kemudian klik, kemudian engagement sosial."""
+    return 15 * p.get("sales", 0) + 5 * p.get("leads", 0) + p.get("clicks", 0) + 0.5 * p.get("likes", 0) + p.get("comments", 0) + 2 * p.get("shares", 0) + 0.01 * p.get("views", 0)
+
+
+def _recent_templates(st, kind, n=2):
+    out = []
+    for p in st["posts"]:
+        try:
+            v = json.loads(p.get("visual") or "null")
+        except Exception:  # noqa: BLE001
+            v = None
+        if v and v.get("k") == kind:
+            out.append(v.get("t"))
+        if len(out) >= n:
+            break
+    return out
+
+
+def choose_template(st, kind, used_today):
+    """Pilih templat: lebih kerap yang berprestasi (purata markah), bonus untuk yang jarang diuji,
+    penalti untuk yang baru digunakan (elak penonton bosan)."""
+    from . import media
+    names = list((media.VIDEO_TEMPLATES if kind == "video" else media.IMAGE_TEMPLATES).keys())
+    stats = {r.get("template"): r for r in st.get("templates", []) if r.get("kind") == kind}
+    recent = set(_recent_templates(st, kind)) | set(used_today)
+    weights = []
+    for t in names:
+        r = stats.get(t) or {}
+        n = r.get("posts") or 0
+        avg = eng({k: r.get(k) or 0 for k in ("sales", "leads", "clicks", "likes", "comments", "shares", "views")}) / max(1, n)
+        w = (1 + avg) ** 0.5 * (2.0 if n < 3 else 1.0) * (0.15 if t in recent else 1.0)  # punca kuasa dua: pemenang lebih kerap, tapi tak monopoli
+        weights.append(w)
+    return random.choices(names, weights=weights)[0]
+
+
+def assign_visuals(st, jobs):
+    """Tetapkan jenis media & templat untuk setiap slot sebelum LLM menulis."""
+    vids, imgs, used = MAX_VIDEOS, MAX_IMAGES, {"image": [], "video": []}
+    order = sorted(jobs, key=lambda j: {"tiktok": 0, "reels": 0, "instagram": 1}.get(j["platform"], 2))
+    ig_n = 0
+    for j in order:
+        pf = j["platform"]
+        if pf in ("tiktok", "reels"):
+            kind = "video"
+        elif pf == "instagram":
+            kind = "video" if ig_n % 2 == 0 else "image"
+            ig_n += 1
+        elif pf in ("threads", "facebook"):
+            kind = random.choices(["image", "video", "none"], weights=[45, 15, 40])[0]
+        else:
+            kind = "none"
+        if kind == "video" and vids <= 0:
+            kind = "image" if pf != "telegram" else "none"
+        if kind == "image" and imgs <= 0:
+            kind = "none"
+        if kind == "none":
+            j["visual"] = {"type": "none"}
+            continue
+        t = choose_template(st, kind, used[kind])
+        used[kind].append(t)
+        vids -= kind == "video"
+        imgs -= kind == "image"
+        j["visual"] = {"type": kind, "template": t}
+    return jobs
+
+
 def attach_media(hq, st, rows):
     """Lukis gambar/video untuk post dan lampirkan media_url. IG tanpa media dibuang."""
     from . import media
@@ -113,11 +180,13 @@ def attach_media(hq, st, rows):
         spec = media.clean_spec(v, r.get("hook")) if ok else None
         if spec and spec["type"] == "video" and nv >= MAX_VIDEOS:
             spec["type"] = "image"
+            spec["template"] = {"teka": "teka", "tips": "tips", "pantas": "cabaran"}.get(spec["template"], "soalan")
         if spec and spec["type"] == "image" and ni >= MAX_IMAGES:
             spec = None
         url = media.make(spec, host, hq) if spec else None
         if url:
             r["media_url"] = url
+            r["visual"] = {"k": spec["type"], "t": spec["template"]}
             nv += spec["type"] == "video"
             ni += spec["type"] == "image"
         if pf == "instagram" and not url:
@@ -131,6 +200,10 @@ def angle_mix(st, n_slots, explore=0.3):
     angles = [a for a in st["angles"] if a.get("status") == "active"]
     if not angles:
         return []
+    eng_by = {}
+    for p in st.get("posts", []):
+        if p.get("status") == "posted" and p.get("angle"):
+            eng_by[p["angle"]] = eng_by.get(p["angle"], 0) + 0.02 * (p.get("likes", 0) + 2 * p.get("comments", 0) + 3 * p.get("shares", 0)) + 0.002 * p.get("views", 0)
     picks = []
     for _ in range(n_slots):
         if random.random() < explore:
@@ -138,7 +211,7 @@ def angle_mix(st, n_slots, explore=0.3):
             continue
         best, bs = None, -1
         for a in angles:
-            r = a.get("leads", 0) + 4 * a.get("sales", 0) + 0.1 * a.get("clicks", 0)
+            r = a.get("leads", 0) + 4 * a.get("sales", 0) + 0.1 * a.get("clicks", 0) + min(3.0, eng_by.get(a["name"], 0))
             s = random.betavariate(1 + r, 1 + max(0, a.get("posts", 0) - r) + 1)
             if s > bs:
                 best, bs = a["name"], s
@@ -214,7 +287,12 @@ def agent_social(hq, st):
     slots = plan_slots(st)
     mix = angle_mix(st, len(slots))
     jobs = [{"slot": i, "platform": pf, "time": t.strftime("%a %H:%M"), "angle": a} for i, ((pf, t), a) in enumerate(zip(slots, mix))]
-    top_posts = sorted([p for p in st["posts"] if p.get("status") == "posted"], key=lambda p: (p.get("sales", 0), p.get("leads", 0), p.get("clicks", 0)), reverse=True)
+    from . import media
+    if media.available():
+        assign_visuals(st, jobs)
+    posted = [p for p in st["posts"] if p.get("status") == "posted"]
+    top_posts = sorted(posted, key=eng, reverse=True)
+    hook_rank = [{"hook": p.get("hook"), "platform": p.get("platform"), "markah": round(eng(p), 1), "views": p.get("views", 0), "likes": p.get("likes", 0), "komen": p.get("comments", 0), "share": p.get("shares", 0), "klik": p.get("clicks", 0)} for p in top_posts]
     sys = system_for("Pengurus Media Sosial & Copywriter", st, "social")
     user = f"""Tulis SATU post untuk setiap slot di bawah. Angle "__explore__" bermaksud cuba sudut BAHARU yang belum pernah diuji (cipta nama snake_case & huraian).
 
@@ -222,6 +300,11 @@ SLOT: {compact(jobs, 3000)}
 SUDUT SEDIA ADA: {compact([{k: a[k] for k in ('name', 'description', 'posts', 'clicks', 'leads', 'sales')} for a in st['angles']], 2500)}
 POST TERBAIK SEBELUM INI (tiru struktur yang berjaya, jangan salin): {compact(top_posts[:5], 2000)}
 POST TERKINI (elak ulang hook yang sama): {compact([p['hook'] for p in st['posts'][:20]], 1500)}
+HOOK PALING BERKESAN (markah = jualan, lead, klik, like, komen, share, view): {compact(hook_rank[:6], 1500)}
+HOOK PALING LEMAH (elak gaya ini): {compact(hook_rank[-4:] if len(hook_rank) > 8 else [], 800)}
+PRESTASI TEMPLAT VISUAL: {compact(st.get('templates', []), 1200)}
+
+Panduan hook: baris pertama mesti buat ibu bapa berhenti scroll dalam 2 saat. Gunakan formula yang terbukti di atas, tetapi uji SATU gaya baharu setiap hari (soalan, angka, cerita ringkas, kesilapan biasa, cabaran) supaya kita terus belajar.
 
 Panduan platform:
 - threads: ≤ 450 aksara. Hook baris pertama yang buat ibu bapa berhenti scroll. Separuh post letak {{LINK}} di hujung, separuh lagi tiada pautan (nilai/soalan untuk engagement).
@@ -235,10 +318,14 @@ Skema JSON:
 {{"posts": [{{"slot": nombor, "angle": "nama_sudut", "hook": "baris pertama", "body": "teks penuh"}}],
  "new_angles": [{{"name": "snake_case", "description": "huraian ringkas"}}]}}
 
-VISUAL (pilihan, letak dalam setiap post sebagai "visual"): sistem akan lukis gambar/video berjenama secara automatik.
-{{"type": "image" atau "video" atau "none", "headline": "ayat besar pada gambar, maksimum 70 aksara, Bahasa Melayu baku, boleh sama dengan hook", "sub": "ayat kecil pilihan, maksimum 100 aksara", "tiles": ["suku","kata"], "word": "sukukata"}}
-- tiles = perkataan ringkas yang dipecah ikut suku kata BETUL, huruf kecil (cth ["bo","la"] → "bola", ["ku","cing"] → "kucing", ["ma","ta"] → "mata"). Gabungan tiles MESTI sama dengan word. Jika tak pasti, beri [] dan "".
-- Panduan: instagram WAJIB image/video; threads & facebook kira-kira separuh guna image; tiktok/reels guna video; maksimum 3 video sehari."""
+VISUAL: setiap SLOT di atas sudah ada "visual" (type + template) yang dipilih sistem ikut prestasi. Jika type bukan "none",
+isi objek "visual" dalam post itu dengan type & template YANG SAMA dan medan templat itu. Sistem akan lukis gambar/video berjenama.
+{{"type": "...", "template": "...", "headline": "ayat besar, maks 70 aksara, BUKAN salinan hook (variasi yang lebih padat)", "sub": "...", "tiles": ["ku","cing"], "word": "kucing", "emoji": "🐱", "points": ["tip 1","tip 2","tip 3"], "before": "...", "after": "...", "words": ["bo-la","ku-cing","ma-ta"]}}
+Templat gambar: {json.dumps(media.IMAGE_TEMPLATES, ensure_ascii=False)}
+Templat video: {json.dumps(media.VIDEO_TEMPLATES, ensure_ascii=False)}
+- tiles/words dipecah ikut suku kata BETUL, huruf kecil, perkataan biasa kanak-kanak (bola, buku, kucing, ikan, mata, kaki, rumah). Gabungan tiles MESTI sama dengan word.
+- emoji mesti padan dengan word (🐱 kucing, 🐟 ikan, ⚽ bola, 📚 buku). Untuk "teka", tulis jawapan dalam teks post.
+- before/after mesti realistik dan jujur, jangan janji keputusan pasti atau angka palsu."""
     out, model = ask_json(sys, user, "smart", 0.9)
     by = {j["slot"]: j for j in jobs}
     rows = []
@@ -252,7 +339,13 @@ VISUAL (pilihan, letak dalam setiap post sebagai "visual"): sistem akan lukis ga
             body = body[:470].rsplit(" ", 1)[0] + (" {LINK}" if "{LINK}" in body else "")
         if pf == "instagram":
             body = body.replace("{LINK}", "pautan di bio")
-        rows.append({"platform": pf, "angle": re.sub(r"[^a-z0-9_]", "", (p.get("angle") or j["angle"] or "umum").lower())[:40] or "umum", "hook": p.get("hook", "")[:200], "body": body, "scheduled_at": ts(t), "_visual": p.get("visual")})
+        vis = p.get("visual") if isinstance(p.get("visual"), dict) else {}
+        want = j.get("visual") or {}
+        if want.get("type") in ("image", "video"):
+            vis = {**vis, "type": want["type"], "template": want["template"]}
+        elif want:
+            vis = {"type": "none"}
+        rows.append({"platform": pf, "angle": re.sub(r"[^a-z0-9_]", "", (p.get("angle") or j["angle"] or "umum").lower())[:40] or "umum", "hook": p.get("hook", "")[:200], "body": body, "scheduled_at": ts(t), "_visual": vis})
     rows = attach_media(hq, st, rows)
     if out.get("new_angles"):
         hq.write("angles", "social", rows=out["new_angles"][:3])
@@ -466,8 +559,8 @@ def gh_issue(props):
 
 def agent_reflect(hq, st):
     posted = [p for p in st["posts"] if p.get("status") == "posted"]
-    top = sorted(posted, key=lambda p: (p.get("sales", 0), p.get("leads", 0), p.get("clicks", 0)), reverse=True)[:6]
-    bottom = sorted(posted, key=lambda p: (p.get("clicks", 0), p.get("leads", 0)))[:6]
+    top = sorted(posted, key=eng, reverse=True)[:6]
+    bottom = sorted(posted, key=eng)[:6]
     sys = system_for("Penganalisis Data & Jurulatih Pasukan (self-improvement)", st, "reflect")
     user = f"""Tugas malam: belajar daripada data hari ini supaya esok pasukan lebih baik menjana jualan.
 
@@ -476,6 +569,8 @@ SUDUT: {compact(st['angles'], 2500)}
 POST TERBAIK: {compact(top, 2500)}
 POST TERLEMAH: {compact(bottom, 1500)}
 VARIAN: {compact(st['variants'], 2000)}
+PRESTASI TEMPLAT VISUAL (gambar/video): {compact(st.get('templates', []), 1500)}
+(post ada medan views/likes/comments/shares dari Threads, FB, IG: gunakan untuk menilai hook & templat mana yang menarik perhatian)
 STATISTIK EMEL: {compact(st.get('email_stats', []), 800)}
 LARIAN AGEN (ralat?): {compact([{k: r[k] for k in ('agent', 'status', 'summary', 'error')} for r in st['runs'][:16]], 2500)}
 MEMORI SEDIA ADA (dengan id): {compact(st['learnings'], 4000)}

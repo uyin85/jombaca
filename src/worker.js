@@ -53,7 +53,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS tester_subs(id INTEGER PRIMARY KEY AUTOINCREMENT, lic TEXT, created INTEGER, updated INTEGER, usage_key TEXT, usage_size INTEGER, testi_key TEXT, testi_size INTEGER, summary TEXT, consent_review INTEGER DEFAULT 0, pub_parent INTEGER DEFAULT 0, pub_child INTEGER DEFAULT 0, status TEXT DEFAULT 'draft', reason TEXT, reviewed_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS proposals(id INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER, agent TEXT, kind TEXT, title TEXT, body TEXT, status TEXT DEFAULT 'open')`,
 ];
-const SCHEMA_V = "5";
+const SCHEMA_V = "6";
 
 const DEFAULTS = {
   brand: "Jom Baca!",
@@ -125,7 +125,7 @@ async function migrate(env) {
   const v = await env.DB.prepare("SELECT v FROM settings WHERE k='schema_v'").first().catch(() => null);
   if (!v || v.v !== SCHEMA_V) {
     await env.DB.batch(SCHEMA.map(s => env.DB.prepare(s)));
-    const add = [["licenses", "expires INTEGER"], ["licenses", "kind TEXT DEFAULT 'paid'"], ["licenses", "fails INTEGER DEFAULT 0"], ["licenses", "phone TEXT"], ["testimonials", "rating INTEGER"], ["testimonials", "kind TEXT"], ["testimonials", "lic TEXT"], ["testimonials", "consent INTEGER DEFAULT 0"], ["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"]];
+    const add = [["licenses", "expires INTEGER"], ["licenses", "kind TEXT DEFAULT 'paid'"], ["licenses", "fails INTEGER DEFAULT 0"], ["licenses", "phone TEXT"], ["testimonials", "rating INTEGER"], ["testimonials", "kind TEXT"], ["testimonials", "lic TEXT"], ["testimonials", "consent INTEGER DEFAULT 0"], ["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"], ["posts", "visual TEXT"], ["posts", "views INTEGER DEFAULT 0"], ["posts", "likes INTEGER DEFAULT 0"], ["posts", "comments INTEGER DEFAULT 0"], ["posts", "shares INTEGER DEFAULT 0"], ["posts", "stats_at INTEGER"]];
     for (const [t, c] of add) await env.DB.prepare(`ALTER TABLE ${t} ADD COLUMN ${c}`).run().catch(() => {});
     await env.DB.prepare("INSERT OR REPLACE INTO settings(k,v) VALUES('schema_v',?)").bind(SCHEMA_V).run();
     const sec = await env.DB.prepare("SELECT v FROM settings WHERE k='lic_secret'").first();
@@ -617,8 +617,9 @@ async function brainState(env, agent) {
   const ov = await overview(env);
   const all = (sql, ...b) => env.DB.prepare(sql).bind(...b).all().then(r => r.results);
   const month = mytDay().slice(0, 7);
-  const [posts, angles, vars, leadsHot, leadsNew, affTop, flowUse, flowQ, packs, learnings, plans, runs, props, prompt, itemStats, appEv, coupons, emailStats] = await Promise.all([
-    all("SELECT id,platform,angle,hook,substr(body,1,280) body,status,scheduled_at,posted_at,clicks,leads,sales FROM posts WHERE created>? ORDER BY id DESC LIMIT 80", now() - 10 * DAY),
+  const [posts, tplStats, angles, vars, leadsHot, leadsNew, affTop, flowUse, flowQ, packs, learnings, plans, runs, props, prompt, itemStats, appEv, coupons, emailStats] = await Promise.all([
+    all("SELECT id,platform,angle,hook,substr(body,1,280) body,status,scheduled_at,posted_at,clicks,leads,sales,visual,views,likes,comments,shares FROM posts WHERE created>? ORDER BY id DESC LIMIT 80", now() - 10 * DAY),
+    all("SELECT json_extract(visual,'$.k') kind, json_extract(visual,'$.t') template, COUNT(*) posts, SUM(clicks) clicks, SUM(leads) leads, SUM(sales) sales, SUM(views) views, SUM(likes) likes, SUM(comments) comments, SUM(shares) shares FROM posts WHERE visual IS NOT NULL AND status='posted' AND posted_at>? GROUP BY kind, template", now() - 45 * DAY),
     all("SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC"),
     all("SELECT id,slot,text,status,views,leads,conv,created FROM variants WHERE status='live'"),
     all("SELECT id,name,phone,email,child_age,stage,score,src,created,contacted,wa_msg FROM leads WHERE bought=0 AND unsub=0 ORDER BY (stage='checkout') DESC, score DESC, created DESC LIMIT 25"),
@@ -649,7 +650,7 @@ async function brainState(env, agent) {
       features: [`${CORE.n_levels || 40} tahap dalam 7 bahagian, ikut pola suku kata yang digunakan di sekolah Malaysia: huruf (vokal, huruf kecil & besar, huruf keliru b/d/p) → suku kata KV → perkataan terbuka → KVK → KVKK → vokal berganding, diftong, ng/ny/kh/sy, konsonan bergabung → kata kerja & imbuhan → ayat, cerita & soalan pemahaman`, "Pengecaman suara: anak sebut, app dengar, 3 kali betul = bintang & gambar 3D", "Mod Pilih Jawapan untuk anak belum bertutur / sebutan belum jelas", "Permainan bunyi (kesedaran fonologi): buang/tukar/gabung suku kata, kira suku kata", "Ujian penempatan 2 minit & ujian kelancaran 1 minit (perkataan betul seminit) dengan graf kemajuan", "Kuiz dengar & pilih setiap tahap", "Misi Harian 10 minit + streak", "Ruang Ibu Bapa: laporan, minit, ketepatan, item lemah", "Pusat Cetak: kad imbas, lembaran kerja, sijil, laporan, pelan 30 hari", "5 profil anak, 3 peranti, offline (PWA)", "Onboarding pilih mod: Biasa / Autisme / Disleksia / Kedua-dua / Belum bertutur", "Mod Tenang & pemasa rehat (autisme), fon Atkinson/Lexend, latar krim, suara perlahan (disleksia)", "Pek cerita baharu setiap minggu", "Telur menetas → koleksi haiwan & maskot"] },
     settings: { auto_post: s.auto_post, auto_variants: s.auto_variants, auto_publish_packs: s.auto_publish_packs, auto_coupons: s.auto_coupons, max_posts_day: +s.max_posts_day, daily_sales_target: +s.daily_sales_target, promo: parseJ(s.promo, null), flow_cost: +s.flow_cost },
     metrics: { today: ov.today, last7: ov.d7, last28: ov.d28, daily: ov.series.slice(-14) }, todo: ov.todo, integrations: ov.integrations, health: ov.health,
-    posts, angles, variants: probBest(vars), leads: { new_24h: leadsNew.n, hot: leadsHot }, affiliates: affTop, coupons,
+    posts, templates: tplStats, angles, variants: probBest(vars), leads: { new_24h: leadsNew.n, hot: leadsHot }, affiliates: affTop, coupons,
     flow: { budget: flowBudget, days_left_in_month: dim - +mytDay().slice(8, 10) + 1, queue: flowQ },
     app: { events_7d: appEv, hardest_items: hardest }, packs, learnings, plans: plans.map(p => ({ day: p.day, ...parseJ(p.json, {}) })), runs, proposals: props,
     prompt_addendum: prompt ? prompt.addendum : "", email_stats: emailStats.map(e => ({ ...e, kind: String(e.kind).replace(/^abandon:.*/, "abandon") })), nurture_tpl: parseJ(s.nurture_tpl, null) || NURTURE_DEFAULT, aff_swipe: parseJ(s.aff_swipe, []),
@@ -674,13 +675,13 @@ async function brainWrite(env, kind, d, agent) {
       const day0 = now() - (now() + MYT) % DAY;
       const cnt = await env.DB.prepare("SELECT platform, COUNT(*) n FROM posts WHERE scheduled_at>=? AND scheduled_at<? GROUP BY platform").bind(day0, day0 + 2 * DAY).all();
       const per = Object.fromEntries(cnt.results.map(r => [r.platform, r.n]));
-      const max = +s.max_posts_day * 2; const st = env.DB.prepare("INSERT INTO posts(created,platform,angle,hook,body,media_url,flow_id,scheduled_at,status,agent) VALUES(?,?,?,?,?,?,?,?,?,?)");
+      const max = +s.max_posts_day * 2; const st = env.DB.prepare("INSERT INTO posts(created,platform,angle,hook,body,media_url,flow_id,scheduled_at,status,agent,visual) VALUES(?,?,?,?,?,?,?,?,?,?,?)");
       const ins = []; let skipped = 0;
       for (const r of rows) {
         const pf = String(r.platform || "").toLowerCase(); if (!PLATFORMS.includes(pf) || !r.body) { skipped++; continue; }
         if ((per[pf] || 0) >= max) { skipped++; continue; } per[pf] = (per[pf] || 0) + 1;
         let at = +r.scheduled_at || Date.parse(r.scheduled_at || "") || now() + 3600e3; if (at < now()) at = now() + 600e3;
-        ins.push(st.bind(now(), pf, clip(r.angle, 40), clip(r.hook, 200), clip(r.body, 3000), clip(r.media_url, 500) || null, r.flow_id || null, at, AUTO_PLATFORMS.includes(pf) ? "scheduled" : "manual_wait", A));
+        ins.push(st.bind(now(), pf, clip(r.angle, 40), clip(r.hook, 200), clip(r.body, 3000), clip(r.media_url, 500) || null, r.flow_id || null, at, AUTO_PLATFORMS.includes(pf) ? "scheduled" : "manual_wait", A, r.visual ? clip(typeof r.visual === "string" ? r.visual : JSON.stringify(r.visual), 300) : null));
       }
       if (ins.length) await env.DB.batch(ins);
       const angles = [...new Set(rows.map(r => clip(r.angle, 40)).filter(Boolean))];
@@ -1276,6 +1277,36 @@ async function handle(req, env, ctx) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Statistik post (view, like, komen, share) dari Threads / FB / IG     */
+/* ------------------------------------------------------------------ */
+async function collectStats(env, s) {
+  const E = withSocial(env, s);
+  const { results } = await env.DB.prepare("SELECT id, platform, ext_id, media_url FROM posts WHERE status='posted' AND ext_id IS NOT NULL AND platform IN ('threads','facebook','instagram') AND posted_at>? AND COALESCE(stats_at,0)<? ORDER BY COALESCE(stats_at,0) LIMIT 8").bind(now() - 10 * DAY, now() - 6 * 3600e3).all();
+  const val = (arr, name) => { const m = (arr || []).find(x => x.name === name); return m ? +(m.total_value ? m.total_value.value : (m.values && m.values[0] ? m.values[0].value : 0)) || 0 : 0; };
+  for (const p of results) {
+    let v = null;
+    try {
+      if (p.platform === "threads" && E.THREADS_TOKEN) {
+        const j = await fetch(`https://graph.threads.net/v1.0/${p.ext_id}/insights?metric=views,likes,replies,reposts,quotes&access_token=${encodeURIComponent(E.THREADS_TOKEN)}`).then(r => r.json());
+        if (j.data) v = { views: val(j.data, "views"), likes: val(j.data, "likes"), comments: val(j.data, "replies"), shares: val(j.data, "reposts") + val(j.data, "quotes") };
+      } else if (p.platform === "facebook" && E.FB_PAGE_TOKEN) {
+        const isVid = /\.(mp4|mov|webm)(\?|$)/i.test(p.media_url || "");
+        const f = isVid ? "views,likes.summary(true).limit(0),comments.summary(true).limit(0)" : "shares,reactions.summary(true).limit(0),comments.summary(true).limit(0),insights.metric(post_impressions_unique)";
+        const j = await fetch(`https://graph.facebook.com/v21.0/${p.ext_id}?fields=${f}&access_token=${encodeURIComponent(E.FB_PAGE_TOKEN)}`).then(r => r.json());
+        if (!j.error) v = { views: +(j.views || (j.insights && j.insights.data && j.insights.data[0] && j.insights.data[0].values[0].value) || 0), likes: +((j.reactions || j.likes || {}).summary || {}).total_count || 0, comments: +((j.comments || {}).summary || {}).total_count || 0, shares: +((j.shares || {}).count) || 0 };
+      } else if (p.platform === "instagram" && E.FB_PAGE_TOKEN) {
+        let j = await fetch(`https://graph.facebook.com/v21.0/${p.ext_id}/insights?metric=views,reach,likes,comments,shares,saved&access_token=${encodeURIComponent(E.FB_PAGE_TOKEN)}`).then(r => r.json());
+        if (j.error) j = await fetch(`https://graph.facebook.com/v21.0/${p.ext_id}/insights?metric=reach,likes,comments,shares,saved&access_token=${encodeURIComponent(E.FB_PAGE_TOKEN)}`).then(r => r.json());
+        if (j.data) v = { views: val(j.data, "views") || val(j.data, "reach"), likes: val(j.data, "likes"), comments: val(j.data, "comments"), shares: val(j.data, "shares") + val(j.data, "saved") };
+      }
+    } catch (e) { console.log("stats", p.id, e && e.message); }
+    if (v) await env.DB.prepare("UPDATE posts SET views=?, likes=?, comments=?, shares=?, stats_at=? WHERE id=?").bind(v.views, v.likes, v.comments, v.shares, now(), p.id).run();
+    else await env.DB.prepare("UPDATE posts SET stats_at=? WHERE id=?").bind(now() - 3 * 3600e3, p.id).run();
+  }
+  return results.length;
+}
+
+/* ------------------------------------------------------------------ */
 /* Pengawas: semak kesihatan sistem & amaran Telegram (tanpa spam)     */
 /* ------------------------------------------------------------------ */
 async function health(env, s) {
@@ -1332,6 +1363,7 @@ async function cron(env) {
     await tg(env, `📊 <b>Ringkasan hari ini</b>\nJualan: ${t.sale} (${rm(t.rev)}) / sasaran ${s.daily_sales_target}\nLawatan: ${t.lp_view} · Lead: ${t.lead} · Checkout: ${t.checkout}\n📌 Post manual menunggu: ${manual.n}\n📱 Lead panas untuk WhatsApp: ${hot.n}\n${siteUrl(env, s)}/admin`);
   }
   if (m < 15) await watchdog(env, s).catch(e => console.log("watchdog", e));
+  if (m >= 30 && m < 45) await collectStats(env, s).catch(e => console.log("stats", e));
   if (h === 3 && m < 15) {
     await threadsRefresh(env, s).catch(e => console.log("threads refresh", e));
     await env.DB.prepare("DELETE FROM claims WHERE ts<?").bind(now() - 30 * DAY).run();

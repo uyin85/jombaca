@@ -118,7 +118,7 @@ async todo(m){const [posts,leads,props]=await Promise.all([list('posts','manual'
  bind(m,{cp:async id=>{const j=await act('post_text',{id});copy(j.text);alert('Disalin \u2713')},done:async id=>{const u=prompt('Pautan post (pilihan):')||'';await act('post_manual_done',{id,url:u});render()},skip:async id=>{await act('post_update',{id,status:'skipped'});render()},ct:async id=>{await act('lead_update',{id,contacted:1,stage:'contacted'});render()},pa:async id=>{await act('proposal_status',{id,status:'accepted'});render()},pr:async id=>{await act('proposal_status',{id,status:'rejected'});render()}})},
 async posts(m){const [rows,angles]=await Promise.all([list('posts'),list('angles')]);
  m.innerHTML=\`<div class="card"><h2>Sudut kandungan (prestasi)</h2>\${table(angles,[['name','Sudut'],['description','Huraian'],['posts','Post'],['clicks','Klik'],['leads','Lead'],['sales','Jualan'],['status','Status']])}</div>
- <div class="card"><h2>Giliran &amp; sejarah post</h2>\${table(rows,[['id','#'],['platform','Platform'],['status','Status',(v,r)=>\`<span class="tag \${v==='posted'?'ok':v==='failed'?'badc':''}">\${esc(v)}</span>\${r.error?\`<div class="badc" style="font-size:11px">\${esc(r.error)}</div>\`:''}\`],['scheduled_at','Jadual',dt],['angle','Sudut'],['body','Teks',v=>\`<div style="max-width:420px">\${esc(String(v).slice(0,260))}</div>\`],['media_url','Media',v=>!v?'':/\\.(png|jpe?g)(\\?|$)/i.test(v)?\`<a href="\${esc(v)}" target="_blank"><img src="\${esc(v)}" style="width:72px;border-radius:8px" loading="lazy"></a>\`:\`<a class="b" href="\${esc(v)}" target="_blank">\u{1F3AC} video</a>\`],['clicks','Klik'],['leads','Lead'],['sales','Jual']],r=>\`<button data-a="ed" data-id="\${r.id}">Edit</button> \${['scheduled','failed','manual'].includes(r.status)?\`<button data-a="sk" data-id="\${r.id}">Langkau</button>\`:''} \${r.status==='failed'?\`<button data-a="rt" data-id="\${r.id}">Cuba semula</button>\`:''}\`)}</div>\`;
+ <div class="card"><h2>Giliran &amp; sejarah post</h2>\${table(rows,[['id','#'],['platform','Platform'],['status','Status',(v,r)=>\`<span class="tag \${v==='posted'?'ok':v==='failed'?'badc':''}">\${esc(v)}</span>\${r.error?\`<div class="badc" style="font-size:11px">\${esc(r.error)}</div>\`:''}\`],['scheduled_at','Jadual',dt],['angle','Sudut'],['body','Teks',v=>\`<div style="max-width:420px">\${esc(String(v).slice(0,260))}</div>\`],['media_url','Media',v=>!v?'':/\\.(png|jpe?g)(\\?|$)/i.test(v)?\`<a href="\${esc(v)}" target="_blank"><img src="\${esc(v)}" style="width:72px;border-radius:8px" loading="lazy"></a>\`:\`<a class="b" href="\${esc(v)}" target="_blank">\u{1F3AC} video</a>\`],['views','\u{1F441}\uFE0F',v=>v||''],['likes','\u2764\uFE0F',(v,r)=>(v||r.comments||r.shares)?\`\${v||0} \xB7 \u{1F4AC}\${r.comments||0} \xB7 \u{1F501}\${r.shares||0}\`:''],['visual','Templat',v=>{try{const j=JSON.parse(v||'null');return j?\`<span class="tag">\${esc(j.k==='video'?'\u{1F3AC}':'\u{1F5BC}\uFE0F')} \${esc(j.t)}</span>\`:''}catch(e){return ''}}],['clicks','Klik'],['leads','Lead'],['sales','Jual']],r=>\`<button data-a="ed" data-id="\${r.id}">Edit</button> \${['scheduled','failed','manual'].includes(r.status)?\`<button data-a="sk" data-id="\${r.id}">Langkau</button>\`:''} \${r.status==='failed'?\`<button data-a="rt" data-id="\${r.id}">Cuba semula</button>\`:''}\`)}</div>\`;
  const by=Object.fromEntries(rows.map(r=>[r.id,r]));
  bind(m,{ed:async id=>{const t=prompt('Edit teks (guna {LINK} untuk pautan jejak):',by[id].body);if(t!=null){await act('post_update',{id,body:t});render()}},sk:async id=>{await act('post_update',{id,status:'skipped'});render()},rt:async id=>{await act('post_update',{id,status:'scheduled',scheduled_at:Date.now()});render()}})},
 async flow(m){const rows=await list('flow');
@@ -243,7 +243,7 @@ var SCHEMA = [
   `CREATE TABLE IF NOT EXISTS tester_subs(id INTEGER PRIMARY KEY AUTOINCREMENT, lic TEXT, created INTEGER, updated INTEGER, usage_key TEXT, usage_size INTEGER, testi_key TEXT, testi_size INTEGER, summary TEXT, consent_review INTEGER DEFAULT 0, pub_parent INTEGER DEFAULT 0, pub_child INTEGER DEFAULT 0, status TEXT DEFAULT 'draft', reason TEXT, reviewed_at INTEGER)`,
   `CREATE TABLE IF NOT EXISTS proposals(id INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER, agent TEXT, kind TEXT, title TEXT, body TEXT, status TEXT DEFAULT 'open')`
 ];
-var SCHEMA_V = "5";
+var SCHEMA_V = "6";
 var DEFAULTS = {
   brand: "Jom Baca!",
   price_sen: "2000",
@@ -326,7 +326,7 @@ async function migrate(env) {
   const v = await env.DB.prepare("SELECT v FROM settings WHERE k='schema_v'").first().catch(() => null);
   if (!v || v.v !== SCHEMA_V) {
     await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
-    const add = [["licenses", "expires INTEGER"], ["licenses", "kind TEXT DEFAULT 'paid'"], ["licenses", "fails INTEGER DEFAULT 0"], ["licenses", "phone TEXT"], ["testimonials", "rating INTEGER"], ["testimonials", "kind TEXT"], ["testimonials", "lic TEXT"], ["testimonials", "consent INTEGER DEFAULT 0"], ["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"]];
+    const add = [["licenses", "expires INTEGER"], ["licenses", "kind TEXT DEFAULT 'paid'"], ["licenses", "fails INTEGER DEFAULT 0"], ["licenses", "phone TEXT"], ["testimonials", "rating INTEGER"], ["testimonials", "kind TEXT"], ["testimonials", "lic TEXT"], ["testimonials", "consent INTEGER DEFAULT 0"], ["orders", "pay_url TEXT"], ["flow_jobs", "caption TEXT"], ["flow_jobs", "platforms TEXT"], ["emails", "clicks INTEGER DEFAULT 0"], ["leads", "updated INTEGER"], ["posts", "visual TEXT"], ["posts", "views INTEGER DEFAULT 0"], ["posts", "likes INTEGER DEFAULT 0"], ["posts", "comments INTEGER DEFAULT 0"], ["posts", "shares INTEGER DEFAULT 0"], ["posts", "stats_at INTEGER"]];
     for (const [t, c] of add) await env.DB.prepare(`ALTER TABLE ${t} ADD COLUMN ${c}`).run().catch(() => {
     });
     await env.DB.prepare("INSERT OR REPLACE INTO settings(k,v) VALUES('schema_v',?)").bind(SCHEMA_V).run();
@@ -921,8 +921,9 @@ async function brainState(env, agent) {
   const ov = await overview(env);
   const all = (sql, ...b) => env.DB.prepare(sql).bind(...b).all().then((r) => r.results);
   const month = mytDay().slice(0, 7);
-  const [posts, angles, vars, leadsHot, leadsNew, affTop, flowUse, flowQ, packs, learnings, plans, runs, props, prompt, itemStats, appEv, coupons, emailStats] = await Promise.all([
-    all("SELECT id,platform,angle,hook,substr(body,1,280) body,status,scheduled_at,posted_at,clicks,leads,sales FROM posts WHERE created>? ORDER BY id DESC LIMIT 80", now() - 10 * DAY),
+  const [posts, tplStats, angles, vars, leadsHot, leadsNew, affTop, flowUse, flowQ, packs, learnings, plans, runs, props, prompt, itemStats, appEv, coupons, emailStats] = await Promise.all([
+    all("SELECT id,platform,angle,hook,substr(body,1,280) body,status,scheduled_at,posted_at,clicks,leads,sales,visual,views,likes,comments,shares FROM posts WHERE created>? ORDER BY id DESC LIMIT 80", now() - 10 * DAY),
+    all("SELECT json_extract(visual,'$.k') kind, json_extract(visual,'$.t') template, COUNT(*) posts, SUM(clicks) clicks, SUM(leads) leads, SUM(sales) sales, SUM(views) views, SUM(likes) likes, SUM(comments) comments, SUM(shares) shares FROM posts WHERE visual IS NOT NULL AND status='posted' AND posted_at>? GROUP BY kind, template", now() - 45 * DAY),
     all("SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC"),
     all("SELECT id,slot,text,status,views,leads,conv,created FROM variants WHERE status='live'"),
     all("SELECT id,name,phone,email,child_age,stage,score,src,created,contacted,wa_msg FROM leads WHERE bought=0 AND unsub=0 ORDER BY (stage='checkout') DESC, score DESC, created DESC LIMIT 25"),
@@ -977,6 +978,7 @@ async function brainState(env, agent) {
     integrations: ov.integrations,
     health: ov.health,
     posts,
+    templates: tplStats,
     angles,
     variants: probBest(vars),
     leads: { new_24h: leadsNew.n, hot: leadsHot },
@@ -1017,7 +1019,7 @@ async function brainWrite(env, kind, d, agent) {
       const cnt = await env.DB.prepare("SELECT platform, COUNT(*) n FROM posts WHERE scheduled_at>=? AND scheduled_at<? GROUP BY platform").bind(day0, day0 + 2 * DAY).all();
       const per = Object.fromEntries(cnt.results.map((r) => [r.platform, r.n]));
       const max = +s.max_posts_day * 2;
-      const st = env.DB.prepare("INSERT INTO posts(created,platform,angle,hook,body,media_url,flow_id,scheduled_at,status,agent) VALUES(?,?,?,?,?,?,?,?,?,?)");
+      const st = env.DB.prepare("INSERT INTO posts(created,platform,angle,hook,body,media_url,flow_id,scheduled_at,status,agent,visual) VALUES(?,?,?,?,?,?,?,?,?,?,?)");
       const ins = [];
       let skipped = 0;
       for (const r of rows) {
@@ -1033,7 +1035,7 @@ async function brainWrite(env, kind, d, agent) {
         per[pf] = (per[pf] || 0) + 1;
         let at = +r.scheduled_at || Date.parse(r.scheduled_at || "") || now() + 36e5;
         if (at < now()) at = now() + 6e5;
-        ins.push(st.bind(now(), pf, clip(r.angle, 40), clip(r.hook, 200), clip(r.body, 3e3), clip(r.media_url, 500) || null, r.flow_id || null, at, AUTO_PLATFORMS.includes(pf) ? "scheduled" : "manual_wait", A));
+        ins.push(st.bind(now(), pf, clip(r.angle, 40), clip(r.hook, 200), clip(r.body, 3e3), clip(r.media_url, 500) || null, r.flow_id || null, at, AUTO_PLATFORMS.includes(pf) ? "scheduled" : "manual_wait", A, r.visual ? clip(typeof r.visual === "string" ? r.visual : JSON.stringify(r.visual), 300) : null));
       }
       if (ins.length) await env.DB.batch(ins);
       const angles = [...new Set(rows.map((r) => clip(r.angle, 40)).filter(Boolean))];
@@ -1767,6 +1769,37 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
   }
   return bad("not found", 404);
 }
+async function collectStats(env, s) {
+  const E = withSocial(env, s);
+  const { results } = await env.DB.prepare("SELECT id, platform, ext_id, media_url FROM posts WHERE status='posted' AND ext_id IS NOT NULL AND platform IN ('threads','facebook','instagram') AND posted_at>? AND COALESCE(stats_at,0)<? ORDER BY COALESCE(stats_at,0) LIMIT 8").bind(now() - 10 * DAY, now() - 6 * 36e5).all();
+  const val = (arr, name) => {
+    const m = (arr || []).find((x) => x.name === name);
+    return m ? +(m.total_value ? m.total_value.value : m.values && m.values[0] ? m.values[0].value : 0) || 0 : 0;
+  };
+  for (const p of results) {
+    let v = null;
+    try {
+      if (p.platform === "threads" && E.THREADS_TOKEN) {
+        const j = await fetch(`https://graph.threads.net/v1.0/${p.ext_id}/insights?metric=views,likes,replies,reposts,quotes&access_token=${encodeURIComponent(E.THREADS_TOKEN)}`).then((r) => r.json());
+        if (j.data) v = { views: val(j.data, "views"), likes: val(j.data, "likes"), comments: val(j.data, "replies"), shares: val(j.data, "reposts") + val(j.data, "quotes") };
+      } else if (p.platform === "facebook" && E.FB_PAGE_TOKEN) {
+        const isVid = /\.(mp4|mov|webm)(\?|$)/i.test(p.media_url || "");
+        const f = isVid ? "views,likes.summary(true).limit(0),comments.summary(true).limit(0)" : "shares,reactions.summary(true).limit(0),comments.summary(true).limit(0),insights.metric(post_impressions_unique)";
+        const j = await fetch(`https://graph.facebook.com/v21.0/${p.ext_id}?fields=${f}&access_token=${encodeURIComponent(E.FB_PAGE_TOKEN)}`).then((r) => r.json());
+        if (!j.error) v = { views: +(j.views || j.insights && j.insights.data && j.insights.data[0] && j.insights.data[0].values[0].value || 0), likes: +((j.reactions || j.likes || {}).summary || {}).total_count || 0, comments: +((j.comments || {}).summary || {}).total_count || 0, shares: +(j.shares || {}).count || 0 };
+      } else if (p.platform === "instagram" && E.FB_PAGE_TOKEN) {
+        let j = await fetch(`https://graph.facebook.com/v21.0/${p.ext_id}/insights?metric=views,reach,likes,comments,shares,saved&access_token=${encodeURIComponent(E.FB_PAGE_TOKEN)}`).then((r) => r.json());
+        if (j.error) j = await fetch(`https://graph.facebook.com/v21.0/${p.ext_id}/insights?metric=reach,likes,comments,shares,saved&access_token=${encodeURIComponent(E.FB_PAGE_TOKEN)}`).then((r) => r.json());
+        if (j.data) v = { views: val(j.data, "views") || val(j.data, "reach"), likes: val(j.data, "likes"), comments: val(j.data, "comments"), shares: val(j.data, "shares") + val(j.data, "saved") };
+      }
+    } catch (e) {
+      console.log("stats", p.id, e && e.message);
+    }
+    if (v) await env.DB.prepare("UPDATE posts SET views=?, likes=?, comments=?, shares=?, stats_at=? WHERE id=?").bind(v.views, v.likes, v.comments, v.shares, now(), p.id).run();
+    else await env.DB.prepare("UPDATE posts SET stats_at=? WHERE id=?").bind(now() - 3 * 36e5, p.id).run();
+  }
+  return results.length;
+}
 async function health(env, s) {
   const q = (sql, ...b) => env.DB.prepare(sql).bind(...b).first();
   const h = mytHour(), out = [];
@@ -1830,6 +1863,7 @@ Lawatan: ${t.lp_view} \xB7 Lead: ${t.lead} \xB7 Checkout: ${t.checkout}
 ${siteUrl(env, s)}/admin`);
   }
   if (m < 15) await watchdog(env, s).catch((e) => console.log("watchdog", e));
+  if (m >= 30 && m < 45) await collectStats(env, s).catch((e) => console.log("stats", e));
   if (h === 3 && m < 15) {
     await threadsRefresh(env, s).catch((e) => console.log("threads refresh", e));
     await env.DB.prepare("DELETE FROM claims WHERE ts<?").bind(now() - 30 * DAY).run();

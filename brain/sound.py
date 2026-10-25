@@ -1,7 +1,7 @@
 """Bunyi video Jom Baca: muzik latar kanak-kanak + kesan bunyi, disintesis sendiri (tiada lagu luar,
 tiada isu hak cipta, tiada servis luar). Python standard sahaja.
 
-tl (saat): hook_end, demo_end, total, tiles (bilangan kotak), word_at (bila perkataan bercantum).
+Muzik dirawak setiap video: tempo, progresi kord, corak melodi, alat (marimba/glockenspiel/pluck) dan kunci.
 """
 import math
 import random
@@ -88,53 +88,88 @@ def whoosh(rng, dur):
     return fn
 
 
-CHORDS = [(60, 64, 67), (55, 59, 62), (57, 60, 64), (53, 57, 60)]  # C G Am F
+def glock(f):
+    def fn(t):
+        return min(1.0, t / 0.002) * (math.sin(TAU * f * t) * math.exp(-t * 5) + 0.4 * math.sin(TAU * 3 * f * t) * math.exp(-t * 12))
+    return fn
+
+
+def pluck(f):
+    def fn(t):
+        a = min(1.0, t / 0.003)
+        return a * sum(math.sin(TAU * f * k * t) / k for k in (1, 2, 3, 4)) * math.exp(-t * 6) * 0.7
+    return fn
+
+
+def tick():
+    def fn(t):
+        return math.sin(TAU * 1500 * t) * math.exp(-t * 60) + 0.5 * math.sin(TAU * 2400 * t) * math.exp(-t * 90)
+    return fn
+
+
+PROGS = [[(60, 64, 67), (55, 59, 62), (57, 60, 64), (53, 57, 60)],  # C G Am F
+         [(60, 64, 67), (53, 57, 60), (55, 59, 62), (60, 64, 67)],  # C F G C
+         [(57, 60, 64), (53, 57, 60), (60, 64, 67), (55, 59, 62)],  # Am F C G
+         [(60, 64, 67), (57, 60, 64), (53, 57, 60), (55, 59, 62)]]  # C Am F G
 PATTERNS = [
     [0, 1, 2, 1, 3, 2, 1, None],
     [0, None, 2, 1, 0, 2, 3, 2],
     [2, 1, 0, None, 1, 2, 3, None],
     [0, 2, 1, 2, 0, None, 2, 3],
+    [3, 2, 1, 0, 1, None, 2, None],
+    [0, 0, 2, None, 1, 1, 3, None],
 ]
+INSTRUMENTS = {"marimba": marimba, "glock": glock, "pluck": pluck}
 
 
 def music(tr, total, rng):
-    beat = 0.5  # 120 BPM
+    bpm = rng.choice([100, 112, 120, 128])
+    beat = 60 / bpm
+    prog = rng.choice(PROGS)
     pat = rng.choice(PATTERNS)
+    inst = INSTRUMENTS[rng.choice(list(INSTRUMENTS))]
+    key = rng.choice([-3, -2, 0, 2, 3, 5])
     t, ci = 0.0, 0
     while t < total:
-        ch = CHORDS[ci % 4]
+        ch = [n + key for n in prog[ci % 4]]
         tones = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24]
         tr.add(t, 1.2, bass(midi(ch[0] - 24)), 0.55)
         tr.add(t + 2 * beat, 1.0, bass(midi(ch[0] - 24)), 0.45)
         for k, idx in enumerate(pat):
             if idx is not None:
-                tr.add(t + k * beat / 2, 0.55, marimba(midi(tones[idx])), 0.32)
+                tr.add(t + k * beat / 2, 0.55, inst(midi(tones[idx])), 0.30)
             if k % 2 == 1:
                 tr.add(t + k * beat / 2, 0.06, shaker(rng), 0.05)
         t += 4 * beat
         ci += 1
+    return {"bpm": bpm, "inst": inst.__name__, "key": key}
 
 
 def render(tl, out_wav, seed=None):
+    """tl = {"total": saat, "events": [(masa, jenis, [indeks])]}; jenis: whoosh, pop, bell, sparkle, tick, tada."""
     rng = random.Random(seed)
     total = tl["total"]
     mus, sfx = Track(total), Track(total)
     music(mus, total, rng)
-    # kesan bunyi ikut animasi (masa sama seperti video_html)
-    sfx.add(0.0, 0.45, whoosh(rng, 0.45), 0.35)
-    n = max(1, tl.get("tiles", 2))
     base = [midi(72), midi(76), midi(79), midi(84)]
-    for i in range(n):
-        sfx.add(tl["hook_end"] * 0.55 + i * 0.35, 0.25, pop(base[i % 4]), 0.55)
-    w = tl["word_at"]
-    for j, m in enumerate((84, 88, 91)):
-        sfx.add(w + j * 0.06, 1.4, bell(midi(m)), 0.28)
-    for j, f in enumerate((2093, 2637, 3136)):
-        sfx.add(w + 0.4 + j * 0.12, 0.35, sparkle(f), 0.30)
-    d = tl["demo_end"]
-    sfx.add(d, 0.4, marimba(midi(79), 5), 0.6)
-    sfx.add(d + 0.16, 0.9, marimba(midi(84), 4), 0.7)
-    # campur: muzik perlahan di bawah kesan bunyi, fade masuk/keluar
+    for e in tl["events"]:
+        at, kind = e[0], e[1]
+        i = e[2] if len(e) > 2 else 0
+        if kind == "whoosh":
+            sfx.add(at, 0.45, whoosh(rng, 0.45), 0.35)
+        elif kind == "pop":
+            sfx.add(at, 0.25, pop(base[i % 4]), 0.55)
+        elif kind == "bell":
+            for j, m in enumerate((84, 88, 91)):
+                sfx.add(at + j * 0.06, 1.4, bell(midi(m)), 0.28)
+        elif kind == "sparkle":
+            for j, f in enumerate((2093, 2637, 3136)):
+                sfx.add(at + j * 0.12, 0.35, sparkle(f), 0.30)
+        elif kind == "tick":
+            sfx.add(at, 0.12, tick(), 0.45)
+        elif kind == "tada":
+            sfx.add(at, 0.4, marimba(midi(79), 5), 0.6)
+            sfx.add(at + 0.16, 0.9, marimba(midi(84), 4), 0.7)
     out = []
     peak = 1e-9
     for i in range(mus.n):
