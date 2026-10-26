@@ -734,10 +734,10 @@ async function brainWrite(env, kind, d, agent) {
   switch (kind) {
     case "unclaim": { await env.DB.prepare("DELETE FROM claims WHERE agent=? AND slot=?").bind(A, clip(d.slot, 40)).run(); return { ok: true }; }
     case "heartbeat": { await setSetting(env, "brain_seen", now()); await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-"); const mt = s.media_test_req === "1" && d.via === "modal"; if (mt) await setSetting(env, "media_test_req", "0");
-      const am = audioMap(s), aj = d.via === "modal" ? Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: s.audio_voice })) : [];
+      const am = audioMap(s), aj = d.via === "modal" ? Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: v.v || s.audio_voice })) : [];
       if (!s.audio_map) await setSetting(env, "audio_map", JSON.stringify(am));
       return { ok: true, media_test: mt, audio_jobs: aj }; }
-    case "audio_jobs": { const am = audioMap(s); return { ok: true, jobs: Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: s.audio_voice })) }; }
+    case "audio_jobs": { const am = audioMap(s); return { ok: true, jobs: Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: v.v || s.audio_voice })) }; }
     case "audio": {
       const am = audioMap(s), k = clip(d.key, 4);
       if (!am[k]) return { ok: false };
@@ -1305,7 +1305,7 @@ async function handle(req, env, ctx) {
         case "lic_reset": await run("UPDATE licenses SET devices='[]', fails=0 WHERE key=?", clip(d.key, 30)); break;
         case "threads_connect": return J(await threadsConnect(env, d.token).catch(e => ({ ok: false, error: e.message })));
         case "fb_connect": return J(await fbConnect(env, d.token, d.page).catch(e => ({ ok: false, error: e.message })));
-        case "audio_set": { const am = audioMap(s), k = clip(d.key, 4); if (am[k]) { am[k] = { t: clip(d.text || am[k].t, 40), u: am[k].u, p: 1 }; await setSetting(env, "audio_map", JSON.stringify(am)); } break; }
+        case "audio_set": { const am = audioMap(s), k = clip(d.key, 4); if (am[k]) { const v = d.voice !== undefined ? clip(d.voice, 40) : am[k].v; am[k] = { t: clip(d.text || am[k].t, 40), u: am[k].u, p: 1 }; if (v) am[k].v = v; await setSetting(env, "audio_map", JSON.stringify(am)); } break; }
         case "audio_all": { const am = audioMap(s); for (const k in am) am[k].p = 1; await setSetting(env, "audio_map", JSON.stringify(am)); if (d.voice) await setSetting(env, "audio_voice", clip(d.voice, 40)); break; }
         case "audio_list": return J({ ok: true, voice: s.audio_voice, map: audioMap(s) });
         case "media_test_req": await setSetting(env, "media_test_req", "1"); break;

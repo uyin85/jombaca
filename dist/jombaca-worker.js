@@ -67,9 +67,9 @@ async audio(m){const j=await act('audio_list');const M=j.map||{};const keys=Obje
  const pend=keys.filter(k=>M[k].p).length;
  m.innerHTML=\`<div class="card"><h2>\u{1F50A} Audio huruf</h2><p class="mut">Sebutan huruf dalam app dijana di pelayan dengan suara neural Bahasa Melayu, supaya bunyinya sama di semua telefon dan berfungsi tanpa internet. Dengar setiap huruf. Jika salah, ubah <b>ejaan sebutan</b> (cth "ef", "eff", "\xE9f") dan tekan Jana semula. Audio baharu siap pada larian otak seterusnya (minit :05 setiap jam).</p>
  <div class="row"><label>Suara: <select id="av"><option value="ms-MY-YasminNeural">Yasmin (wanita)</option><option value="ms-MY-OsmanNeural">Osman (lelaki)</option></select></label><button class="p" data-a="all">Jana semula semua huruf</button>\${pend?\`<span class="tag warn">\u23F3 \${pend} menunggu dijana</span>\`:'<span class="tag ok">\u2713 Semua siap</span>'}</div></div>
- <div class="card"><div class="tw"><table><tr><th>Huruf</th><th>Dengar</th><th>Ejaan sebutan</th><th></th></tr>\${keys.map(k=>\`<tr><td style="font:600 28px system-ui">\${esc(k)}</td><td>\${M[k].u?\`<audio controls preload="none" src="\${esc(M[k].u)}" style="height:34px"></audio>\`:'<span class="mut">belum dijana</span>'}\${M[k].p?' <span class="tag warn">\u23F3</span>':''}</td><td><input data-k="\${esc(k)}" value="\${esc(M[k].t)}" style="width:140px"></td><td><button data-a="re" data-id="\${esc(k)}">Jana semula</button></td></tr>\`).join('')}</table></div></div>\`;
+ <div class="card"><div class="tw"><table><tr><th>Huruf</th><th>Dengar</th><th>Ejaan sebutan</th><th>Suara</th><th></th></tr>\${keys.map(k=>\`<tr><td style="font:600 28px system-ui">\${esc(k)}</td><td>\${M[k].u?\`<audio controls preload="none" src="\${esc(M[k].u)}" style="height:34px"></audio>\`:'<span class="mut">belum dijana</span>'}\${M[k].p?' <span class="tag warn">\u23F3</span>':''}</td><td><input data-k="\${esc(k)}" value="\${esc(M[k].t)}" style="width:140px"></td><td><select data-v="\${esc(k)}">\${[['','(lalai)'],['ms-MY-YasminNeural','Yasmin'],['ms-MY-OsmanNeural','Osman'],['id-ID-GadisNeural','Gadis (bunyi vokal tulen)']].map(([v,l])=>\`<option value="\${v}" \${(M[k].v||'')===v?'selected':''}>\${l}</option>\`).join('')}</select></td><td><button data-a="re" data-id="\${esc(k)}">Jana semula</button></td></tr>\`).join('')}</table></div></div>\`;
  $('#av').value=j.voice||'ms-MY-YasminNeural';
- bind(m,{re:async k=>{await act('audio_set',{key:k,text:m.querySelector(\`[data-k="\${k}"]\`).value});render()},all:async()=>{await act('audio_all',{voice:$('#av').value});render()}});
+ bind(m,{re:async k=>{await act('audio_set',{key:k,text:m.querySelector(\`[data-k="\${k}"]\`).value,voice:m.querySelector(\`[data-v="\${k}"]\`).value});render()},all:async()=>{await act('audio_all',{voice:$('#av').value});render()}});
 },
 async tester(m){const R=await list('testers');
  const pend=R.filter(r=>r.status==='pending');
@@ -1096,13 +1096,13 @@ async function brainWrite(env, kind, d, agent) {
       await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-");
       const mt = s.media_test_req === "1" && d.via === "modal";
       if (mt) await setSetting(env, "media_test_req", "0");
-      const am = audioMap(s), aj = d.via === "modal" ? Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: s.audio_voice })) : [];
+      const am = audioMap(s), aj = d.via === "modal" ? Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: v.v || s.audio_voice })) : [];
       if (!s.audio_map) await setSetting(env, "audio_map", JSON.stringify(am));
       return { ok: true, media_test: mt, audio_jobs: aj };
     }
     case "audio_jobs": {
       const am = audioMap(s);
-      return { ok: true, jobs: Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: s.audio_voice })) };
+      return { ok: true, jobs: Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: v.v || s.audio_voice })) };
     }
     case "audio": {
       const am = audioMap(s), k = clip(d.key, 4);
@@ -1767,7 +1767,9 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
         case "audio_set": {
           const am = audioMap(s), k = clip(d.key, 4);
           if (am[k]) {
+            const v = d.voice !== void 0 ? clip(d.voice, 40) : am[k].v;
             am[k] = { t: clip(d.text || am[k].t, 40), u: am[k].u, p: 1 };
+            if (v) am[k].v = v;
             await setSetting(env, "audio_map", JSON.stringify(am));
           }
           break;
