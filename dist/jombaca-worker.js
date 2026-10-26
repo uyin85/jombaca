@@ -2081,12 +2081,16 @@ async function cron(env) {
   const h = mytHour(), m = (/* @__PURE__ */ new Date()).getUTCMinutes();
   if (h === 22 && m < 15) {
     const t = await statSum(env, ["lp_view", "lead", "checkout", "sale", "rev"], mytDay());
-    const manual = await env.DB.prepare("SELECT COUNT(*) n FROM posts WHERE status='manual'").first();
+    await env.DB.prepare("UPDATE posts SET status='expired' WHERE status IN ('manual','manual_wait') AND scheduled_at<?").bind(now() - 2 * DAY).run();
+    const { results: man } = await env.DB.prepare("SELECT platform, COUNT(*) n FROM posts WHERE status='manual' GROUP BY platform").all();
+    const auto = await env.DB.prepare("SELECT COUNT(*) n FROM posts WHERE status='posted' AND posted_at>?").bind(now() - DAY).first();
+    const manual = { n: man.reduce((a, r) => a + r.n, 0), txt: man.map((r) => `${r.platform} ${r.n}`).join(", ") };
     const hot = await env.DB.prepare("SELECT COUNT(*) n FROM leads WHERE bought=0 AND contacted=0 AND phone!='' AND (stage='checkout' OR score>=60)").first();
     await tg(env, `\u{1F4CA} <b>Ringkasan hari ini</b>
 Jualan: ${t.sale} (${rm(t.rev)}) / sasaran ${s.daily_sales_target}
 Lawatan: ${t.lp_view} \xB7 Lead: ${t.lead} \xB7 Checkout: ${t.checkout}
-\u{1F4CC} Post manual menunggu: ${manual.n}
+\u{1F916} Auto-post 24 jam: ${auto.n} (Threads/FB/IG)
+\u{1F4CC} Untuk anda post sendiri: ${manual.n ? manual.txt + " (TikTok/Reels tiada auto-post; skrip & video di Tugas Saya)" : "tiada"}
 \u{1F4F1} Lead panas untuk WhatsApp: ${hot.n}
 ${siteUrl(env, s)}/admin`);
   }
