@@ -29,9 +29,11 @@ GUARDRAILS = """PERATURAN WAJIB (jangan langgar):
 """
 
 PRODUCT_BRIEF = """PRODUK: Jom Baca! Pro: aplikasi web (PWA) belajar membaca Bahasa Melayu untuk anak 4 hingga 8 tahun, suku kata demi suku kata.
-Harga {price} sekali bayar, akses seumur hidup (harga minimum selepas diskaun {floor}). 3 tahap pertama percuma di {site}/app/
+FAKTA TEPAT (guna angka ini sahaja, jangan reka yang lain):
+- Harga {price} sekali bayar, akses seumur hidup. {free} tahap pertama PERCUMA (tanpa daftar) di {site}/app/
+- {coupons}
+- Maskot: anak pilih maskot sendiri daripada koleksi haiwan comel. Maskot TIADA nama khas; jangan namakan maskot.
 Ciri: {features}
-Maskot: Momo, monyet comel coklat (telinga bulat, muka krim, pipi merah jambu).
 Pautan jualan: gunakan placeholder {{LINK}} (sistem akan tukar kepada pautan jejak). Pautan cuba percuma: {site}/app/
 """
 
@@ -42,7 +44,18 @@ def now_myt():
 
 def brief(st):
     p = st["product"]
-    return PRODUCT_BRIEF.format(price=p["price"], floor=p["floor"], site=p["site"], features="; ".join(p["features"]))
+    cps = []
+    for c in st.get("coupons") or []:
+        if c.get("off"):
+            what = f"potongan RM{c['off'] / 100:g}"
+        elif c.get("pct"):
+            what = f"diskaun {c['pct']}%"
+        else:
+            continue
+        until = dt.datetime.fromtimestamp(c["expires"] / 1000, MYT).strftime("%d/%m %H:%M") if c.get("expires") else "tiada tarikh tamat"
+        cps.append(f"kod {c['code']} = {what} (tamat {until})")
+    coupons = ("Kupon aktif: " + "; ".join(cps) + ". Jangan sebut kupon lain.") if cps else "Tiada kupon aktif sekarang: JANGAN sebut kupon atau diskaun."
+    return PRODUCT_BRIEF.format(price=p["price"], free=p.get("free_levels") or 6, coupons=coupons, site=p["site"], features="; ".join(p["features"]))
 
 
 def memory_block(st, agent):
@@ -96,6 +109,19 @@ def metrics_summary(st):
 
 
 # ---------------------------------------------------------------- bandit sudut
+def fact_fix(text, st):
+    """Betulkan fakta yang kerap tersasar sebelum post disimpan (jaring keselamatan selepas LLM)."""
+    free = st["product"].get("free_levels") or 6
+    t = re.sub(r"\b\d+(\s+tahap\s+(?:pertama\s+|terawal\s+|awal\s+)?(?:secara\s+)?percuma)", rf"{free}\1", text)
+    t = re.sub(r"\b(cuba|mula dengan|mulakan dengan)\s+\d+\s+tahap", rf"\1 {free} tahap", t, flags=re.I)
+    t = re.sub(r"\s*(?:dengan |serta |dan )?maskot\s+Momo[^.,!?\n]*", "", t)
+    t = t.replace("Momo", "maskot")
+    t = re.sub(r",\s*([.!?])", r"\1", t)
+    if not st.get("coupons"):
+        t = re.sub(r"[^.!?\n]*\b(kod|kupon)\b[^.!?\n]*[.!?]?", "", t, flags=re.I)
+    return t
+
+
 def eng(p):
     """Markah prestasi satu post: jualan & lead paling berat, kemudian klik, kemudian engagement sosial."""
     return 15 * p.get("sales", 0) + 5 * p.get("leads", 0) + p.get("clicks", 0) + 0.5 * p.get("likes", 0) + p.get("comments", 0) + 2 * p.get("shares", 0) + 0.01 * p.get("views", 0)
@@ -336,7 +362,7 @@ Templat video: {json.dumps(media.VIDEO_TEMPLATES, ensure_ascii=False)}
         if not j or not p.get("body"):
             continue
         pf, t = slots[j["slot"]]
-        body = p["body"].strip()
+        body = fact_fix(p["body"].strip(), st)
         if pf == "threads" and len(body) > 490:
             body = body[:470].rsplit(" ", 1)[0] + (" {LINK}" if "{LINK}" in body else "")
         if pf == "instagram":
@@ -371,9 +397,9 @@ SUDUT BERPRESTASI: {compact(winners, 1500)}
 Bajet: {compact(fb['budget'])}
 
 Peraturan kreatif:
-- JANGAN jana kanak-kanak manusia realistik. Guna watak 3D animasi: Momo si monyet (maskot), haiwan comel, objek bercakap, atau tangan dewasa memegang telefon.
+- JANGAN jana kanak-kanak manusia realistik. Guna watak 3D animasi: monyet comel (maskot, tanpa nama), haiwan comel, objek bercakap, atau tangan dewasa memegang telefon.
 - Gaya: animasi 3D ala filem kartun, warna cerah pastel, pencahayaan lembut. 9:16 menegak.
-- Dialog dalam Bahasa Malaysia, pendek, jelas (Veo boleh jana suara). Contoh: Momo menyebut "bo… la… BOLA!" dan bola melantun.
+- Dialog dalam Bahasa Malaysia, pendek, jelas (Veo boleh jana suara). Contoh: monyet comel menyebut "bo… la… BOLA!" dan bola melantun.
 - Teks atas skrin JANGAN diharap dijana Veo (selalu salah eja). Letak dalam "overlay_text" untuk ditambah di CapCut.
 - Hook visual dalam 1 saat pertama.
 
