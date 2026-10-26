@@ -192,6 +192,17 @@ def main(argv):
         except Exception as e:  # noqa: BLE001
             print("senarai unit gagal:", e)
         audio_jobs(hq, hq.write("audio_jobs", "brain").get("jobs", []))
+    elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "cfai-test":
+        from .llm import call_cfai, parse_json
+        hq = HQ()
+        try:
+            text, model = call_cfai("Anda penulis iklan Bahasa Malaysia. Balas JSON sahaja.", 'Tulis 1 hook Threads tentang anak belajar membaca suku kata. Skema: {"hook": "..."}', "smart", 0.7)
+            out = f"{model}: {parse_json(text)}"
+            st = "ok"
+        except Exception as e:  # noqa: BLE001
+            out, st = f"{type(e).__name__}: {e}", "error"
+        print(out)
+        hq.write("run", "cfai-test", status=st, summary=out[:1500])
     elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "voice-test":
         voice_test()
     elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "media-test":

@@ -1256,6 +1256,23 @@ async function handle(req, env, ctx) {
       const r = await env.DB.prepare("INSERT OR IGNORE INTO claims(agent,slot,ts) VALUES(?,?,?)").bind(clip(d.agent, 30), clip(d.slot, 40), now()).run();
       return J({ ok: !!r.meta.changes });
     }
+    if (p === "/api/brain/llm" && M === "POST") {
+      if (!env.AI) return bad("Workers AI tiada", 500);
+      const d = await body();
+      const models = d.tier === "fast"
+        ? ["@cf/google/gemma-4-26b-a4b-it", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/deepseek-ai/deepseek-v4.1-flash-1017"]
+        : ["@cf/deepseek-ai/deepseek-v4.1-flash-1017", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/google/gemma-4-26b-a4b-it"];
+      const errs = [];
+      for (const m of models) {
+        try {
+          const r = await env.AI.run(m, { messages: [{ role: "system", content: String(d.system || "") }, { role: "user", content: String(d.user || "") }], max_tokens: 6000, temperature: +d.temperature || 0.7 });
+          const text = typeof r === "string" ? r : r && (r.response != null ? (typeof r.response === "string" ? r.response : JSON.stringify(r.response)) : r.choices && r.choices[0] && r.choices[0].message ? r.choices[0].message.content : "");
+          if (text && String(text).trim()) { ctx.waitUntil(bump(env, [["cfai:" + m.split("/").pop()]])); return J({ ok: true, text, model: m }); }
+          errs.push(m + ": jawapan kosong");
+        } catch (e) { errs.push(m + ": " + clip(e.message || e, 200)); }
+      }
+      return J({ ok: false, error: errs.join(" | ") }, 502);
+    }
     if (p === "/api/brain/media" && M === "POST") {
       if (!env.MEDIA) return bad("R2 tiada", 500);
       const ct = (req.headers.get("content-type") || "").toLowerCase();

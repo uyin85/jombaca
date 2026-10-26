@@ -126,6 +126,15 @@ def call_gemini(system, user, tier, temperature):
     raise last
 
 
+def call_cfai(system, user, tier, temperature):
+    """Cloudflare Workers AI melalui HQ (binding AI, percuma 10,000 Neuron sehari). Tiada kunci tambahan."""
+    url = os.environ["HQ_URL"].rstrip("/") + "/api/brain/llm"
+    d = _post(url, {"system": system, "user": user, "tier": tier, "temperature": temperature}, {"x-brain-key": os.environ["BRAIN_KEY"]}, timeout=170)
+    if not d.get("ok"):
+        raise RuntimeError("workers ai: " + str(d.get("error"))[:300])
+    return d["text"], "cfai:" + d.get("model", "?").split("/")[-1]
+
+
 def call_anthropic(system, user, tier, temperature):
     model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5-5")
     if tier == "fast":
@@ -151,6 +160,7 @@ PROVIDERS = {
     "gemini": (lambda: bool(os.environ.get("GEMINI_API_KEY")), call_gemini),
     "anthropic": (lambda: bool(os.environ.get("ANTHROPIC_API_KEY")), call_anthropic),
     "compat": (lambda: bool(os.environ.get("OPENAI_COMPAT_BASE") and os.environ.get("OPENAI_COMPAT_KEY")), call_compat),
+    "cfai": (lambda: bool(os.environ.get("HQ_URL") and os.environ.get("BRAIN_KEY")) and os.environ.get("CFAI", "1") != "0", call_cfai),
 }
 
 
@@ -163,7 +173,7 @@ def ask_json(system, user, tier="smart", temperature=0.8):
     if os.environ.get("BRAIN_FAKE_LLM"):
         from . import fake_llm
         return fake_llm.answer(system, user), "fake"
-    order = os.environ.get("LLM_FAST_ORDER" if tier == "fast" else "LLM_SMART_ORDER") or ("gemini,compat,anthropic" if tier == "fast" else "anthropic,compat,gemini")
+    order = os.environ.get("LLM_FAST_ORDER" if tier == "fast" else "LLM_SMART_ORDER") or ("gemini,compat,anthropic,cfai" if tier == "fast" else "anthropic,compat,gemini,cfai")
     errors = []
     for name in [x.strip() for x in order.split(",") if x.strip()]:
         if name not in PROVIDERS or not PROVIDERS[name][0]():
