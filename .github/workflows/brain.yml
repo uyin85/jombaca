@@ -32,6 +32,9 @@ jobs:
           else
             echo "Bukan waktu agen Sosial ($H:00 MYT). Langkau."
           fi
+      - name: Pasang enjin suara (ujian suara sahaja)
+        if: ${{ inputs.agent == 'voice-test' }}
+        run: pip install -q edge-tts==7.2.0 gTTS==2.5.4
       - name: Jalankan agen
         env:
           HQ_URL: ${{ secrets.HQ_URL }}

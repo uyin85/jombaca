@@ -93,9 +93,40 @@ def media_test(exit_after=True):
     return ok
 
 
+def voice_test():
+    """Uji enjin suara dari pelayan: edge-tts (Microsoft ms-MY) dan gTTS (Google ms). Lapor ke HQ."""
+    import asyncio
+    import tempfile
+    hq = HQ()
+    out = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for voice in ("ms-MY-YasminNeural", "ms-MY-OsmanNeural"):
+            try:
+                import edge_tts
+                f = f"{tmp}/{voice}.mp3"
+                asyncio.run(edge_tts.Communicate("eff. bi. si. jei. kei. zek.", voice).save(f))
+                out.append(f"edge {voice}: ok {os.path.getsize(f)} bait")
+                url = hq.upload(f, "audio/mpeg") if hasattr(hq, "upload") else ""
+                out.append(f"  {url}")
+            except BaseException as e:  # noqa: BLE001
+                out.append(f"edge {voice}: GAGAL {type(e).__name__}: {str(e)[:300]}")
+        try:
+            from gtts import gTTS
+            f = f"{tmp}/g.mp3"
+            gTTS("eff. bi. si.", lang="ms").save(f)
+            out.append(f"gtts: ok {os.path.getsize(f)} bait")
+        except BaseException as e:  # noqa: BLE001
+            out.append(f"gtts: GAGAL {type(e).__name__}: {str(e)[:300]}")
+    txt = "\n".join(out)
+    print(txt)
+    hq.write("run", "voice-test", status="ok", summary=txt[:3900])
+
+
 def main(argv):
     if not argv or argv[0] == "tick":
         tick()
+    elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "voice-test":
+        voice_test()
     elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "media-test":
         media_test()
     elif argv[0] == "agent" and len(argv) > 1:

@@ -1635,7 +1635,7 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
     if (p === "/api/brain/media" && M === "POST") {
       if (!env.MEDIA) return bad("R2 tiada", 500);
       const ct = (req.headers.get("content-type") || "").toLowerCase();
-      const ext = { "image/png": "png", "image/jpeg": "jpg", "video/mp4": "mp4" }[ct];
+      const ext = { "image/png": "png", "image/jpeg": "jpg", "video/mp4": "mp4", "audio/mpeg": "mp3", "audio/wav": "wav" }[ct];
       if (!ext) return bad("jenis media tidak disokong");
       if (+req.headers.get("content-length") > 95 * 1024 * 1024) return bad("terlalu besar");
       const mk = `v/b/${mytDay()}/${Date.now().toString(36)}${rnd(4)}.${ext}`;
