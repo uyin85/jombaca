@@ -820,7 +820,7 @@
     const TV_EN = { a: "ah", i: "ee", u: "oo", e: "eh", o: "oh" };
     function malayVoice() { const v = getMalayVoice(); return !!(v && /^(ms|id)/i.test(v.lang)); }
     /* Konsonan tunggal: sebut NAMA huruf seperti lagu ABC (bi, si, di, ef…). Ejaan ini supaya suara Melayu sebut dengan betul. */
-    const TC_MS = { b: "bi", c: "si", d: "di", f: "ef", g: "ji", h: "eic", j: "je", k: "ke", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zed" };
+    const TC_MS = { b: "bi", c: "si", d: "di", f: "ef", g: "ji", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
     function T(p) {
       if (p.length === 1 && TC_MS[p]) return TC_MS[p];
       if (p.length === 1 && TV_MS[p]) return malayVoice() ? TV_MS[p] : TV_EN[p];
