@@ -78,36 +78,51 @@ def _gemini_pick(tier):
     return cands[0] if cands else None
 
 
+def _gemini_chain(tier):
+    """Rantai model percuma: alias 'latest' dahulu, kemudian model Flash / Flash-Lite lain yang tersedia untuk kunci ini
+    (versi terbaru dahulu). Setiap model ada had kuota sendiri, jadi bila satu sesak/habis kuota, yang lain mengambil alih.
+    Model Pro dilangkau (berbayar). Boleh ditetapkan sendiri dengan GEMINI_CHAIN=model1,model2,..."""
+    if os.environ.get("GEMINI_CHAIN"):
+        return [m.strip() for m in os.environ["GEMINI_CHAIN"].split(",") if m.strip()]
+    _gemini_pick(tier)  # isi senarai model tersedia
+    ok = [m for m in (_gemini_models or []) if m.startswith("gemini-") and "flash" in m and not any(x in m for x in ("tts", "image", "live", "audio", "embedding", "customtools", "pro", "-exp", "thinking"))]
+    ver = lambda m: [-int(x) for x in re.findall(r"\d+", m)]  # noqa: E731
+    flash = sorted([m for m in ok if "lite" not in m and "latest" not in m and "preview" not in m], key=ver)
+    lite = sorted([m for m in ok if "lite" in m and "latest" not in m and "preview" not in m], key=ver)
+    smart = os.environ.get("GEMINI_MODEL_SMART") or "gemini-flash-latest"
+    fast = os.environ.get("GEMINI_MODEL_FAST") or "gemini-flash-lite-latest"
+    # Alias "latest" biasanya = versi terbaru, jadi versi terbaru dilangkau (kuota sama); guna versi sebelumnya sebagai sandaran.
+    chain = [smart] + flash[1:3] + [fast] + lite[1:3] if tier != "fast" else [fast] + lite[1:3] + [smart] + flash[1:2]
+    out = []
+    for m in chain:
+        if m not in out:
+            out.append(m)
+    return out[:6]
+
+
 def call_gemini(system, user, tier, temperature):
     key = os.environ["GEMINI_API_KEY"]
-    model = os.environ.get("GEMINI_MODEL_FAST" if tier == "fast" else "GEMINI_MODEL_SMART") or ("gemini-flash-lite-latest" if tier == "fast" else "gemini-flash-latest")
     body = {
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": user}]}],
         "generationConfig": {"temperature": temperature, "responseMimeType": "application/json", "maxOutputTokens": 8192},
     }
-    # Bila model utama sesak (503/429) atau lambat, cuba lagi dengan jeda, kemudian tukar ke model sandaran.
-    backup = os.environ.get("GEMINI_MODEL_BACKUP") or ("gemini-flash-latest" if tier == "fast" else "gemini-flash-lite-latest")
-    plan = [(model, 0), (model, 15), (backup, 5), (backup, 30)]
     last = None
-    for i, (m, wait) in enumerate(plan):
-        if wait:
-            time.sleep(wait)
+    for i, m in enumerate(_gemini_chain(tier)):
+        if i:
+            time.sleep(4)
         try:
             d = _post(f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={key}", body, {}, timeout=90)
             parts = d["candidates"][0]["content"]["parts"]
             return "".join(p.get("text", "") for p in parts), "gemini:" + m
         except urllib.error.HTTPError as e:
             last = e
-            if e.code == 404 and i == 0:
-                alt = _gemini_pick(tier)
-                if alt and alt != m:
-                    plan[1] = (alt, 0)
-                    continue
-            if e.code not in (404, 429, 500, 502, 503, 504):
+            print(f"gemini {m}: HTTP {e.code}, cuba model seterusnya")
+            if e.code not in (400, 403, 404, 429, 500, 502, 503, 504):
                 raise
-        except (TimeoutError, OSError) as e:  # termasuk "read operation timed out"
+        except (TimeoutError, OSError, KeyError, IndexError) as e:  # termasuk "read operation timed out" / jawapan kosong
             last = e
+            print(f"gemini {m}: {type(e).__name__}, cuba model seterusnya")
     raise last
 
 
