@@ -799,7 +799,7 @@ async function postTelegram(env, p, text) {
   if (!j.ok) throw new Error("telegram " + JSON.stringify(j).slice(0, 200));
   return { id: String(j.result.message_id), done: true };
 }
-var AUDIO_DEFAULTS = { a: "a", i: "i", u: "u", e: "\xE9", o: "o", b: "bi", c: "si", d: "di", f: "eff", g: "ji", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
+var AUDIO_DEFAULTS = { a: "a", i: "i", u: "u", e: "eh", o: "o", b: "bi", c: "si", d: "di", f: "eff", g: "ji", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
 function audioMap(s) {
   const m = parseJ(s.audio_map, {}) || {};
   for (const [k, t] of Object.entries(AUDIO_DEFAULTS)) if (!m[k]) m[k] = { t, u: null, p: 1 };
