@@ -523,7 +523,7 @@ async function postTelegram(env, p, text) {
   const j = await r.json(); if (!j.ok) throw new Error("telegram " + JSON.stringify(j).slice(0, 200)); return { id: String(j.result.message_id), done: true };
 }
 /* Audio huruf: teks (ejaan sebutan) yang dibacakan oleh suara neural ms-MY di pelayan, kemudian disimpan di R2. */
-const AUDIO_DEFAULTS = { a: "ah", i: "ih", u: "u", e: "eh", o: "o", b: "bi", c: "si", d: "di", f: "eff", g: "ji", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
+const AUDIO_DEFAULTS = { a: "ah", i: "ih", u: "u", e: "eh", o: "o", b: "bi", c: "ca", d: "di", f: "eff", g: "ga", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
 function audioMap(s) {
   const m = parseJ(s.audio_map, {}) || {};
   for (const [k, t] of Object.entries(AUDIO_DEFAULTS)) if (!m[k]) m[k] = { t, u: null, p: 1 };
