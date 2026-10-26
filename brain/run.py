@@ -38,6 +38,8 @@ def tick(hq=None):
         hb = hq.write("heartbeat", "brain", via="github" if os.environ.get("GITHUB_ACTIONS") else "modal")
         if hb.get("media_test"):
             media_test(exit_after=False)
+        if hb.get("audio_jobs"):
+            audio_jobs(hq, hb["audio_jobs"])
     except Exception as e:  # noqa: BLE001
         print("heartbeat gagal:", e)
     ran = []
@@ -91,6 +93,29 @@ def media_test(exit_after=True):
     if exit_after:
         sys.exit(0 if ok else 1)
     return ok
+
+
+def audio_jobs(hq, jobs):
+    """Jana audio huruf dengan suara neural ms-MY (edge-tts) dan muat naik ke R2."""
+    import asyncio
+    import tempfile
+    try:
+        import edge_tts
+    except Exception as e:  # noqa: BLE001
+        print("edge-tts tiada:", e)
+        return
+    done, errs = 0, []
+    with tempfile.TemporaryDirectory() as tmp:
+        for j in jobs[:40]:
+            f = f"{tmp}/{j['key']}.mp3"
+            try:
+                asyncio.run(edge_tts.Communicate(j["text"], j.get("voice") or "ms-MY-YasminNeural", rate="-10%").save(f))
+                url = hq.upload(f, "audio/mpeg")
+                hq.write("audio", "brain", key=j["key"], url=url)
+                done += 1
+            except Exception as e:  # noqa: BLE001
+                errs.append(f"{j['key']}: {type(e).__name__}: {str(e)[:160]}")
+    hq.write("run", "audio", status="ok" if not errs else "error", summary=f"{done} audio huruf dijana", error="\n".join(errs)[:1900])
 
 
 def voice_test():

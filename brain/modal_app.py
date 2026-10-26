@@ -11,7 +11,7 @@ app = modal.App("jombaca-brain")
 image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("ffmpeg", "fonts-noto-color-emoji", "fonts-dejavu-core")
-    .pip_install("playwright==1.47.0")
+    .pip_install("playwright==1.47.0", "edge-tts==7.3.1")
     .run_commands("playwright install --with-deps chromium")
     .env({"JB_FONTS": "/opt/jbfonts"})
     .add_local_dir("brain/fonts", remote_path="/opt/jbfonts")

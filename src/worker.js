@@ -84,6 +84,7 @@ const DEFAULTS = {
   tester_trial_days: "10",      // tempoh Pro percubaan pengguji sebelum video diluluskan
   video_keep_days: "90",        // video pengguji dipadam selepas N hari (kecuali ada izin siar)
   tg_alerts: "1",               // 1 = Pengawas hantar amaran Telegram
+  audio_voice: "ms-MY-YasminNeural", // suara audio huruf (ms-MY-YasminNeural wanita / ms-MY-OsmanNeural lelaki)
   link_in_reply: "1",           // 1 = pautan dialih ke balasan/komen pertama (Threads & FB) supaya jangkauan post utama tak dikurangkan
   nurture_tpl: "",
 };
@@ -521,6 +522,13 @@ async function postTelegram(env, p, text) {
   const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${m}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json(); if (!j.ok) throw new Error("telegram " + JSON.stringify(j).slice(0, 200)); return { id: String(j.result.message_id), done: true };
 }
+/* Audio huruf: teks (ejaan sebutan) yang dibacakan oleh suara neural ms-MY di pelayan, kemudian disimpan di R2. */
+const AUDIO_DEFAULTS = { a: "a", i: "i", u: "u", e: "é", o: "o", b: "bi", c: "si", d: "di", f: "eff", g: "ji", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
+function audioMap(s) {
+  const m = parseJ(s.audio_map, {}) || {};
+  for (const [k, t] of Object.entries(AUDIO_DEFAULTS)) if (!m[k]) m[k] = { t, u: null, p: 1 };
+  return m;
+}
 function withSocial(env, s) {
   if (!s) return env;
   return { ...env, THREADS_USER_ID: env.THREADS_USER_ID || s.threads_user_id || "", THREADS_TOKEN: env.THREADS_TOKEN || s.threads_token || "", FB_PAGE_ID: env.FB_PAGE_ID || s.fb_page_id || "", FB_PAGE_TOKEN: env.FB_PAGE_TOKEN || s.fb_page_token || "", IG_USER_ID: env.IG_USER_ID || s.ig_user_id || "" };
@@ -725,7 +733,17 @@ async function brainWrite(env, kind, d, agent) {
   const rows = Array.isArray(d.rows) ? d.rows.slice(0, 40) : [];
   switch (kind) {
     case "unclaim": { await env.DB.prepare("DELETE FROM claims WHERE agent=? AND slot=?").bind(A, clip(d.slot, 40)).run(); return { ok: true }; }
-    case "heartbeat": { await setSetting(env, "brain_seen", now()); await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-"); const mt = s.media_test_req === "1" && d.via === "modal"; if (mt) await setSetting(env, "media_test_req", "0"); return { ok: true, media_test: mt }; }
+    case "heartbeat": { await setSetting(env, "brain_seen", now()); await setSetting(env, "brain_seen_by", clip(d.via, 20) || "-"); const mt = s.media_test_req === "1" && d.via === "modal"; if (mt) await setSetting(env, "media_test_req", "0");
+      const am = audioMap(s), aj = d.via === "modal" ? Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: s.audio_voice })) : [];
+      if (!s.audio_map) await setSetting(env, "audio_map", JSON.stringify(am));
+      return { ok: true, media_test: mt, audio_jobs: aj }; }
+    case "audio": {
+      const am = audioMap(s), k = clip(d.key, 4);
+      if (!am[k]) return { ok: false };
+      am[k] = { ...am[k], u: clip(d.url, 300), p: 0 };
+      await setSetting(env, "audio_map", JSON.stringify(am)); await setSetting(env, "audio_v", now());
+      return { ok: true };
+    }
     case "run": {
       await env.DB.prepare("INSERT INTO agent_runs(ts,agent,status,summary,error,llm) VALUES(?,?,?,?,?,?)").bind(now(), A, clip(d.status, 20), clip(d.summary, 4000), clip(d.error, 2000), clip(d.llm, 60)).run();
       return { ok: true };
@@ -1163,6 +1181,11 @@ async function handle(req, env, ctx) {
     }
     return bad("?", 404);
   }
+  if (p === "/api/audio" && M === "GET") {
+    const s = await settings(env), am = audioMap(s), m = {};
+    for (const [k, v] of Object.entries(am)) if (v.u) m[k] = v.u;
+    return new Response(JSON.stringify({ v: +(s.audio_v || 0), m }), { headers: { "content-type": "application/json", "cache-control": "public, max-age=300", "access-control-allow-origin": "*" } });
+  }
   if (p === "/api/unsub" && M === "GET") {
     const id = +url.searchParams.get("l");
     if (id && url.searchParams.get("s") === await unsubSig(env, id)) {
@@ -1255,7 +1278,7 @@ async function handle(req, env, ctx) {
         angles: "SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC",
         prompts: "SELECT * FROM agent_prompts ORDER BY id DESC LIMIT 50",
         plans: "SELECT * FROM plans ORDER BY day DESC LIMIT 14",
-        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','ig_user_id','ig_checked','media_test_req','fb_comment_ok','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
+        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','ig_user_id','ig_checked','media_test_req','fb_comment_ok','audio_map','audio_v','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
         app: "SELECT k, SUM(n) n FROM stats WHERE day>=date('now','-13 day') AND (k LIKE 'app:%' OR k LIKE 'src:%' OR k LIKE 'ref:%') GROUP BY k ORDER BY n DESC LIMIT 200",
       };
       if (!Q[t]) return bad("t?");
@@ -1281,6 +1304,9 @@ async function handle(req, env, ctx) {
         case "lic_reset": await run("UPDATE licenses SET devices='[]', fails=0 WHERE key=?", clip(d.key, 30)); break;
         case "threads_connect": return J(await threadsConnect(env, d.token).catch(e => ({ ok: false, error: e.message })));
         case "fb_connect": return J(await fbConnect(env, d.token, d.page).catch(e => ({ ok: false, error: e.message })));
+        case "audio_set": { const am = audioMap(s), k = clip(d.key, 4); if (am[k]) { am[k] = { t: clip(d.text || am[k].t, 40), u: am[k].u, p: 1 }; await setSetting(env, "audio_map", JSON.stringify(am)); } break; }
+        case "audio_all": { const am = audioMap(s); for (const k in am) am[k].p = 1; await setSetting(env, "audio_map", JSON.stringify(am)); if (d.voice) await setSetting(env, "audio_voice", clip(d.voice, 40)); break; }
+        case "audio_list": return J({ ok: true, voice: s.audio_voice, map: audioMap(s) });
         case "media_test_req": await setSetting(env, "media_test_req", "1"); break;
         case "ig_resolve": { const ig = await igResolve(env, s); return J(ig ? { ok: true, username: ig.username } : { ok: false, error: "Akaun IG belum dipautkan ke Page ini, atau token tiada kebenaran instagram_basic." }); }
         case "social_disconnect": for (const k of d.p === "fb" ? ["fb_page_id", "fb_page_token", "fb_page_name", "ig_user_id", "ig_username", "ig_checked"] : ["threads_token", "threads_user_id", "threads_username", "threads_token_exp"]) await run("DELETE FROM settings WHERE k=?", k); break;

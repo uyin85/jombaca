@@ -47,7 +47,7 @@ const list=(t,f='')=>api('/api/admin/list?t='+t+'&f='+f).then(j=>j.rows||[]);
 function logout(){KEY='';try{localStorage.removeItem('hq_key')}catch(e){}$('#hdr').style.display='none';$('#main').innerHTML='';$('#login').style.display='block'}
 $('#kb').onclick=async()=>{KEY=$('#k').value.trim();try{await api('/api/admin/overview');try{localStorage.setItem('hq_key',KEY)}catch(e){}boot()}catch(e){$('#ke').textContent='Kunci salah.'}};
 $('#out').onclick=logout;
-const TABS=[['home','📊 Ringkasan'],['todo','✅ Tugas Saya'],['posts','📣 Kandungan'],['flow','🎬 Flow'],['leads','🧲 Leads'],['sales','💰 Jualan'],['aff','🤝 Affiliate'],['tester','🧪 Pengguji'],['ab','🔀 A/B'],['prod','📚 Produk'],['brain','🧠 Otak AI'],['set','⚙️ Tetapan']];
+const TABS=[['home','📊 Ringkasan'],['todo','✅ Tugas Saya'],['posts','📣 Kandungan'],['flow','🎬 Flow'],['leads','🧲 Leads'],['sales','💰 Jualan'],['aff','🤝 Affiliate'],['tester','🧪 Pengguji'],['ab','🔀 A/B'],['prod','📚 Produk'],['audio','🔊 Audio huruf'],['brain','🧠 Otak AI'],['set','⚙️ Tetapan']];
 let tab='home';
 function nav(){$('#nav').innerHTML=TABS.map(([k,l])=>`<button data-t="${k}" class="${k===tab?'on':''}">${l}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;nav();render()})}
 function boot(){$('#login').style.display='none';$('#hdr').style.display='flex';nav();render()}
@@ -57,6 +57,14 @@ const wa=(phone,msg)=>`https://wa.me/${phone}?text=${encodeURIComponent(msg||'')
 const copy=t=>{try{navigator.clipboard.writeText(t)}catch(e){}};
 async function render(){const m=$('#main');m.innerHTML='<p class="mut">Memuatkan…</p>';try{await VIEWS[tab](m)}catch(e){if(e.message!=='auth')m.innerHTML='<p class="badc">Ralat: '+esc(e.message)+'</p>'}}
 const VIEWS={
+async audio(m){const j=await act('audio_list');const M=j.map||{};const keys=Object.keys(M);
+ const pend=keys.filter(k=>M[k].p).length;
+ m.innerHTML=`<div class="card"><h2>🔊 Audio huruf</h2><p class="mut">Sebutan huruf dalam app dijana di pelayan dengan suara neural Bahasa Melayu, supaya bunyinya sama di semua telefon dan berfungsi tanpa internet. Dengar setiap huruf. Jika salah, ubah <b>ejaan sebutan</b> (cth "ef", "eff", "éf") dan tekan Jana semula. Audio baharu siap pada larian otak seterusnya (minit :05 setiap jam).</p>
+ <div class="row"><label>Suara: <select id="av"><option value="ms-MY-YasminNeural">Yasmin (wanita)</option><option value="ms-MY-OsmanNeural">Osman (lelaki)</option></select></label><button class="p" data-a="all">Jana semula semua huruf</button>${pend?`<span class="tag warn">⏳ ${pend} menunggu dijana</span>`:'<span class="tag ok">✓ Semua siap</span>'}</div></div>
+ <div class="card"><div class="tw"><table><tr><th>Huruf</th><th>Dengar</th><th>Ejaan sebutan</th><th></th></tr>${keys.map(k=>`<tr><td style="font:600 28px system-ui">${esc(k)}</td><td>${M[k].u?`<audio controls preload="none" src="${esc(M[k].u)}" style="height:34px"></audio>`:'<span class="mut">belum dijana</span>'}${M[k].p?' <span class="tag warn">⏳</span>':''}</td><td><input data-k="${esc(k)}" value="${esc(M[k].t)}" style="width:140px"></td><td><button data-a="re" data-id="${esc(k)}">Jana semula</button></td></tr>`).join('')}</table></div></div>`;
+ $('#av').value=j.voice||'ms-MY-YasminNeural';
+ bind(m,{re:async k=>{await act('audio_set',{key:k,text:m.querySelector(`[data-k="${k}"]`).value});render()},all:async()=>{await act('audio_all',{voice:$('#av').value});render()}});
+},
 async tester(m){const R=await list('testers');
  const pend=R.filter(r=>r.status==='pending');
  const sz=b=>b?(b/1048576).toFixed(1)+'MB':'';

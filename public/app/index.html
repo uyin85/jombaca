@@ -844,6 +844,16 @@
 
     let dtok = 0, cur = null, auto = false, silent = 0;
 
+    /* Audio huruf dijana di pelayan (suara neural Bahasa Melayu), supaya sebutan huruf sama di semua telefon & luar talian. */
+    let AUD = {}; const AUDB = {};
+    try { AUD = JSON.parse(localStorage.getItem("jb_aud") || "{}") || {}; } catch (e) {}
+    async function loadAud() {
+      const base = location.protocol.indexOf("http") === 0 ? location.origin : "";
+      if (!base) return;
+      try { const j = await (await fetch(base + "/api/audio")).json(); if (j && j.m) { AUD = j.m; try { localStorage.setItem("jb_aud", JSON.stringify(AUD)); } catch (e) {} } } catch (e) {}
+      for (const [k, u] of Object.entries(AUD)) { try { const b = await (await fetch(u)).blob(); if (b.size > 500) AUDB[k] = URL.createObjectURL(b); } catch (e) {} }
+    }
+    setTimeout(loadAud, 1200);
     function playOne(file, txt) {
       return new Promise(res => {
         const tts = () => {
@@ -857,6 +867,8 @@
             speechSynthesis.speak(u);
           } catch (e) { res(); }
         };
+        const au = typeof file === "string" && file.length === 1 ? (AUDB[file] || AUD[file]) : null;
+        if (au) { const a = new Audio(au); a.onended = () => res(); a.onerror = tts; a.play().catch(tts); return; }
         if (!CFG.audio) { tts(); return; }
         const a = new Audio(CFG.audio + "/" + file + ".mp3");
         a.onended = () => res(); a.onerror = tts; a.play().catch(tts);
