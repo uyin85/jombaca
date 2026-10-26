@@ -149,6 +149,9 @@ FORMATS = {
     "kuiz": "Kuiz/teka (suku kata, perkataan, emoji): minta jawapan di komen. Tiada pautan.",
     "promo": "Jualan jujur: masalah → cara Jom Baca bantu → ajak cuba percuma. {LINK} HANYA pada baris terakhir.",
 }
+HASHTAGS = ["#belajarmembaca", "#sukukata", "#ibubapa", "#parentingmalaysia", "#anakmembaca", "#prasekolah", "#tadika", "#darjahsatu",
+            "#persediaansekolah", "#didikanak", "#ibubekerja", "#mommalaysia", "#ayahmalaysia", "#bacaanawal", "#bahasamelayu",
+            "#pendidikanawal", "#anakautisme", "#disleksia", "#homeschoolmalaysia", "#tipsparenting", "#cikgutadika"]
 FORMAT_TPL = {
     "kuiz": {"image": ["teka", "cabaran"], "video": ["teka", "pantas"]},
     "tips": {"image": ["carousel", "tips"], "video": ["tips"]},
@@ -399,11 +402,13 @@ FORMAT (setiap SLOT sudah ada "format"; IKUT dengan tepat, ini peraturan 80/20 s
 PRESTASI FORMAT: {compact(st.get('formats', []), 800)}
 
 Panduan platform (format yang mudah tular):
-- threads: PENDEK. 1 hingga 4 baris, maks 300 aksara, nada berbual macam kawan, tiada hashtag atau 1 sahaja. Akhiri dengan soalan yang mudah dijawab. Untuk promo: {{LINK}} pada baris terakhir sendirian (sistem akan alihkan ke balasan pertama supaya jangkauan tak jatuh).
-- facebook: 3 hingga 6 perenggan pendek, bercerita atau tips, ayat terakhir soalan yang mengundang komen. Untuk promo: {{LINK}} pada baris terakhir sendirian (sistem alih ke komen pertama).
+- threads: PENDEK. 1 hingga 4 baris, maks 300 aksara, nada berbual macam kawan. WAJIB tepat 1 tag topik di hujung (Threads hanya benarkan satu; ia boleh diklik dan bantu post ditemui). Akhiri dengan soalan yang mudah dijawab. Untuk promo: {{LINK}} pada baris terakhir sendirian (sistem akan alihkan ke balasan pertama supaya jangkauan tak jatuh).
+- facebook: 3 hingga 6 perenggan pendek, bercerita atau tips, ayat terakhir soalan yang mengundang komen, kemudian 2 hingga 3 hashtag. Untuk promo: {{LINK}} pada baris terakhir sendirian (sistem alih ke komen pertama).
 - telegram: tips ringkas. Promo sahaja boleh ada {{LINK}}.
 - instagram: kapsyen padat 300 hingga 800 aksara, ajak "Simpan 💾 & kongsi dengan pasangan", 5 hingga 8 hashtag. JANGAN letak {{LINK}}; untuk promo tulis "pautan di bio". WAJIB ada visual.
 - Post bukan promo TIDAK boleh ada {{LINK}} dan jangan berakhir dengan ajakan beli.
+- HASHTAG: pilih yang padan dengan isi post dan bergilir (jangan guna set yang sama setiap kali). Sentiasa sertakan #jombaca di IG, TikTok dan Reels.
+  Bank hashtag: {' '.join(HASHTAGS)}
 - tiktok / reels: SKRIP VIDEO 20 hingga 40 saat untuk dirakam/diedit oleh Azrin (rakaman skrin app + suara latar, atau klip Flow). Format body:
   HOOK (0-3s): ...\\nBABAK: 1) ... 2) ... 3) ...\\nTEKS ATAS SKRIN: ...\\nSUARA LATAR: ...\\nKAPSYEN: ... #hashtag (5 hingga 8 hashtag Malaysia relevan)\\nCTA: "Link di bio"
 
