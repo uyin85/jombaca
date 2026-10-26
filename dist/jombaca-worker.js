@@ -112,13 +112,13 @@ async home(m){const o=await api('/api/admin/overview');const t=o.today,w=o.d7,mo
  m.querySelectorAll('[data-go]').forEach(a=>a.onclick=()=>{tab=a.dataset.go;nav();render()})},
 async todo(m){const [posts,leads,props]=await Promise.all([list('posts','manual'),list('leads','hot'),list('proposals')]);
  const open=props.filter(p=>p.status==='open');
- m.innerHTML=\`<div class="card"><h2>\u{1F4CC} Post manual (\${posts.length})</h2><p class="mut">Salin teks, muat turun video, post di platform, kemudian tekan "Sudah post". Letak pautan <b>\${location.origin}/b/tiktok</b> di bio TikTok (tukar tiktok \u2192 reels/shorts ikut platform) supaya jualan dapat dijejak.</p>\${table(posts,[['platform','Platform',v=>\`<span class="tag">\${esc(v)}</span>\`],['scheduled_at','Masa',dt],['angle','Sudut'],['body','Teks',(v,r)=>\`<pre>\${esc(v)}</pre>\`],['media_url','Media',v=>v?\`<a class="b" href="\${esc(v)}" target="_blank">\u{1F3AC} video</a>\`:'']],r=>\`<button data-a="cp" data-id="\${r.id}">Salin</button> <button class="g" data-a="done" data-id="\${r.id}">Sudah post</button> <button data-a="skip" data-id="\${r.id}">Langkau</button>\`)}</div>
+ m.innerHTML=\`<div class="card"><h2>\u{1F4CC} Post manual (\${posts.length})</h2><p class="mut">Salin teks, muat turun video, post di platform, kemudian tekan "Sudah post". Letak pautan <b>\${location.origin}/b/tiktok</b> di bio TikTok (tukar tiktok \u2192 reels/shorts ikut platform) supaya jualan dapat dijejak.</p>\${table(posts,[['platform','Platform',v=>\`<span class="tag">\${esc(v)}</span>\`],['scheduled_at','Masa',dt],['angle','Sudut'],['body','Teks',(v,r)=>\`<pre>\${esc(v)}</pre>\`],['media_url','Media',v=>v?String(v).split('|').map((u,i)=>\`<a class="b" href="\${esc(u)}" target="_blank" download>\${/\\.mp4/i.test(u)?'\u{1F3AC} Muat turun video':'\u{1F5BC}\uFE0F Gambar '+(i+1)}</a>\`).join(' '):'']],r=>\`<button data-a="cp" data-id="\${r.id}">Salin</button> <button class="g" data-a="done" data-id="\${r.id}">Sudah post</button> <button data-a="skip" data-id="\${r.id}">Langkau</button>\`)}</div>
  <div class="card"><h2>\u{1F4F1} Lead panas: WhatsApp (\${leads.filter(l=>!l.contacted).length})</h2><p class="mut">Mesej dicadang oleh agen Leads. Hantar secara peribadi, satu-satu. Jangan spam.</p>\${table(leads.slice(0,60),[['name','Nama'],['stage','Tahap',v=>\`<span class="tag">\${esc(v)}</span>\`],['score','Skor'],['child_age','Umur anak'],['src','Sumber'],['created','Masuk',dt],['wa_msg','Mesej cadangan',v=>\`<span class="mut">\${esc(v||'')}</span>\`]],r=>\`\${r.contacted?'<span class="ok">\u2713 dihubungi</span> ':''}<a class="b" target="_blank" href="\${wa(r.phone,r.wa_msg||('Hai '+(r.name||'')+', saya dari Jom Baca! Ada apa-apa saya boleh bantu tentang aplikasi membaca untuk anak?'))}">WhatsApp</a> <button data-a="ct" data-id="\${r.id}">Tanda dihubungi</button>\`)}</div>
  <div class="card"><h2>\u{1F4A1} Cadangan agen (\${open.length})</h2>\${table(open,[['created','Bila',dt],['agent','Agen'],['kind','Jenis'],['title','Tajuk'],['body','Butiran',v=>\`<pre>\${esc(v)}</pre>\`]],r=>\`<button class="g" data-a="pa" data-id="\${r.id}">Terima</button> <button data-a="pr" data-id="\${r.id}">Tolak</button>\`)}</div>\`;
  bind(m,{cp:async id=>{const j=await act('post_text',{id});copy(j.text);alert('Disalin \u2713')},done:async id=>{const u=prompt('Pautan post (pilihan):')||'';await act('post_manual_done',{id,url:u});render()},skip:async id=>{await act('post_update',{id,status:'skipped'});render()},ct:async id=>{await act('lead_update',{id,contacted:1,stage:'contacted'});render()},pa:async id=>{await act('proposal_status',{id,status:'accepted'});render()},pr:async id=>{await act('proposal_status',{id,status:'rejected'});render()}})},
 async posts(m){const [rows,angles]=await Promise.all([list('posts'),list('angles')]);
  m.innerHTML=\`<div class="card"><h2>Sudut kandungan (prestasi)</h2>\${table(angles,[['name','Sudut'],['description','Huraian'],['posts','Post'],['clicks','Klik'],['leads','Lead'],['sales','Jualan'],['status','Status']])}</div>
- <div class="card"><h2>Giliran &amp; sejarah post</h2>\${table(rows,[['id','#'],['platform','Platform'],['status','Status',(v,r)=>\`<span class="tag \${v==='posted'?'ok':v==='failed'?'badc':''}">\${esc(v)}</span>\${r.error?\`<div class="badc" style="font-size:11px">\${esc(r.error)}</div>\`:''}\`],['scheduled_at','Jadual',dt],['angle','Sudut'],['body','Teks',v=>\`<div style="max-width:420px">\${esc(String(v).slice(0,260))}</div>\`],['media_url','Media',v=>!v?'':/\\.(png|jpe?g)(\\?|$)/i.test(v)?\`<a href="\${esc(v)}" target="_blank"><img src="\${esc(v)}" style="width:72px;border-radius:8px" loading="lazy"></a>\`:\`<a class="b" href="\${esc(v)}" target="_blank">\u{1F3AC} video</a>\`],['views','\u{1F441}\uFE0F',v=>v||''],['likes','\u2764\uFE0F',(v,r)=>(v||r.comments||r.shares)?\`\${v||0} \xB7 \u{1F4AC}\${r.comments||0} \xB7 \u{1F501}\${r.shares||0}\`:''],['visual','Templat',v=>{try{const j=JSON.parse(v||'null');return j?\`<span class="tag">\${esc(j.k==='video'?'\u{1F3AC}':'\u{1F5BC}\uFE0F')} \${esc(j.t)}</span>\`:''}catch(e){return ''}}],['clicks','Klik'],['leads','Lead'],['sales','Jual']],r=>\`<button data-a="ed" data-id="\${r.id}">Edit</button> \${['scheduled','failed','manual'].includes(r.status)?\`<button data-a="sk" data-id="\${r.id}">Langkau</button>\`:''} \${r.status==='failed'?\`<button data-a="rt" data-id="\${r.id}">Cuba semula</button>\`:''}\`)}</div>\`;
+ <div class="card"><h2>Giliran &amp; sejarah post</h2>\${table(rows,[['id','#'],['platform','Platform'],['status','Status',(v,r)=>\`<span class="tag \${v==='posted'?'ok':v==='failed'?'badc':''}">\${esc(v)}</span>\${r.error?\`<div class="badc" style="font-size:11px">\${esc(r.error)}</div>\`:''}\`],['scheduled_at','Jadual',dt],['angle','Sudut'],['body','Teks',v=>\`<div style="max-width:420px">\${esc(String(v).slice(0,260))}</div>\`],['media_url','Media',v=>{if(!v)return '';const L=String(v).split('|'),u=L[0];return /\\.(png|jpe?g)(\\?|$)/i.test(u)?\`<a href="\${esc(u)}" target="_blank"><img src="\${esc(u)}" style="width:72px;border-radius:8px" loading="lazy"></a>\${L.length>1?\`<div class="mut">\u{1F5BC}\uFE0F\xD7\${L.length} carousel</div>\`:''}\`:\`<a class="b" href="\${esc(u)}" target="_blank">\u{1F3AC} video</a>\`}],['views','\u{1F441}\uFE0F',v=>v||''],['likes','\u2764\uFE0F',(v,r)=>(v||r.comments||r.shares)?\`\${v||0} \xB7 \u{1F4AC}\${r.comments||0} \xB7 \u{1F501}\${r.shares||0}\`:''],['visual','Format',v=>{try{const j=JSON.parse(v||'null');return j?\`\${j.f?\`<span class="tag">\${esc(j.f)}</span> \`:''}\${j.t?\`<span class="tag">\${esc(j.k==='video'?'\u{1F3AC}':'\u{1F5BC}\uFE0F')} \${esc(j.t)}</span>\`:''}\`:''}catch(e){return ''}}],['clicks','Klik'],['leads','Lead'],['sales','Jual']],r=>\`<button data-a="ed" data-id="\${r.id}">Edit</button> \${['scheduled','failed','manual'].includes(r.status)?\`<button data-a="sk" data-id="\${r.id}">Langkau</button>\`:''} \${r.status==='failed'?\`<button data-a="rt" data-id="\${r.id}">Cuba semula</button>\`:''}\`)}</div>\`;
  const by=Object.fromEntries(rows.map(r=>[r.id,r]));
  bind(m,{ed:async id=>{const t=prompt('Edit teks (guna {LINK} untuk pautan jejak):',by[id].body);if(t!=null){await act('post_update',{id,body:t});render()}},sk:async id=>{await act('post_update',{id,status:'skipped'});render()},rt:async id=>{await act('post_update',{id,status:'scheduled',scheduled_at:Date.now()});render()}})},
 async flow(m){const rows=await list('flow');
@@ -288,6 +288,8 @@ var DEFAULTS = {
   // video pengguji dipadam selepas N hari (kecuali ada izin siar)
   tg_alerts: "1",
   // 1 = Pengawas hantar amaran Telegram
+  link_in_reply: "1",
+  // 1 = pautan dialih ke balasan/komen pertama (Threads & FB) supaya jangkauan post utama tak dikurangkan
   nurture_tpl: ""
 };
 var SEED_VARIANTS = {
@@ -651,6 +653,30 @@ var AUTO_PLATFORMS = ["threads", "facebook", "telegram", "instagram"];
 function postText(p, site) {
   return String(p.body || "").replace(/\{LINK\}/g, `${site}/s/${p.id}`);
 }
+var mediaList = (p) => String(p.media_url || "").split("|").map((x) => x.trim()).filter(Boolean);
+function splitLink(body) {
+  const lines = String(body || "").split("\n");
+  const keep = lines.filter((l) => !l.includes("{LINK}")), move = lines.filter((l) => l.includes("{LINK}"));
+  if (!move.length || !keep.join("").trim()) return { main: body, reply: "" };
+  let reply = move.join("\n").trim();
+  if (reply.replace("{LINK}", "").trim().length < 3) reply = "\u{1F449} Cuba 6 tahap pertama percuma di sini: {LINK}";
+  return { main: keep.join("\n").replace(/\n{3,}/g, "\n\n").trim(), reply };
+}
+async function postReply(env, platform, parentId, text) {
+  if (platform === "threads") {
+    const base = `https://graph.threads.net/v1.0/${env.THREADS_USER_ID}`, tk = env.THREADS_TOKEN;
+    const c = await fetch(`${base}/threads`, { method: "POST", body: new URLSearchParams({ media_type: "TEXT", text: clip(text, 500), reply_to_id: parentId, access_token: tk }) }).then((r) => r.json());
+    if (!c.id) throw new Error("balasan threads " + JSON.stringify(c).slice(0, 160));
+    const j = await fetch(`${base}/threads_publish`, { method: "POST", body: new URLSearchParams({ creation_id: c.id, access_token: tk }) }).then((r) => r.json());
+    if (!j.id) throw new Error("balasan threads terbit " + JSON.stringify(j).slice(0, 160));
+    return j.id;
+  }
+  if (platform === "facebook") {
+    const j = await fetch(`https://graph.facebook.com/v21.0/${parentId}/comments`, { method: "POST", body: new URLSearchParams({ message: text, access_token: env.FB_PAGE_TOKEN }) }).then((r) => r.json());
+    if (!j.id) throw new Error("komen fb (perlu kebenaran pages_manage_engagement) " + JSON.stringify(j.error || j).slice(0, 160));
+    return j.id;
+  }
+}
 async function postThreads(env, p, text) {
   const base = `https://graph.threads.net/v1.0/${env.THREADS_USER_ID}`;
   const tk = env.THREADS_TOKEN;
@@ -662,6 +688,18 @@ async function postThreads(env, p, text) {
     const j3 = await r3.json();
     if (!j3.id) throw new Error("threads publish " + JSON.stringify(j3).slice(0, 200));
     return { id: j3.id, done: true };
+  }
+  const urls = mediaList(p);
+  if (urls.length > 1) {
+    const kids = [];
+    for (const u of urls.slice(0, 10)) {
+      const c2 = await fetch(`${base}/threads`, { method: "POST", body: new URLSearchParams({ media_type: "IMAGE", image_url: u, is_carousel_item: "true", access_token: tk }) }).then((r3) => r3.json());
+      if (!c2.id) throw new Error("threads carousel item " + JSON.stringify(c2).slice(0, 200));
+      kids.push(c2.id);
+    }
+    const c = await fetch(`${base}/threads`, { method: "POST", body: new URLSearchParams({ media_type: "CAROUSEL", children: kids.join(","), text: clip(text, 500), access_token: tk }) }).then((r3) => r3.json());
+    if (!c.id) throw new Error("threads carousel " + JSON.stringify(c).slice(0, 200));
+    return { id: c.id, done: false };
   }
   const isVid = /\.(mp4|mov|webm)(\?|$)/i.test(p.media_url || ""), isImg = /\.(png|jpe?g|webp)(\?|$)/i.test(p.media_url || "");
   const f = new URLSearchParams({ media_type: isVid ? "VIDEO" : isImg ? "IMAGE" : "TEXT", text: clip(text, 500), access_token: tk });
@@ -706,6 +744,18 @@ async function postInstagram(env, p, text) {
     if (!pub.id) throw new Error("instagram publish " + JSON.stringify(pub).slice(0, 200));
     return { id: pub.id, done: true };
   }
+  const urls = mediaList(p);
+  if (urls.length > 1) {
+    const kids = [];
+    for (const u of urls.slice(0, 10)) {
+      const c3 = await call(`${ig}/media`, { image_url: u, is_carousel_item: "true" });
+      if (!c3.id) throw new Error("instagram carousel item " + JSON.stringify(c3).slice(0, 200));
+      kids.push(c3.id);
+    }
+    const c2 = await call(`${ig}/media`, { media_type: "CAROUSEL", children: kids.join(","), caption: clip(text, 2100) });
+    if (!c2.id) throw new Error("instagram carousel " + JSON.stringify(c2).slice(0, 200));
+    return { id: c2.id, done: false };
+  }
   const isVid = /\.(mp4|mov)(\?|$)/i.test(p.media_url || ""), isImg = /\.(png|jpe?g)(\?|$)/i.test(p.media_url || "");
   if (!isVid && !isImg) throw new Error("Instagram perlukan gambar atau video");
   const c = await call(`${ig}/media`, isVid ? { media_type: "REELS", video_url: p.media_url, caption: clip(text, 2100), share_to_feed: "true" } : { image_url: p.media_url, caption: clip(text, 2100) });
@@ -713,17 +763,22 @@ async function postInstagram(env, p, text) {
   return { id: c.id, done: false };
 }
 async function postFacebook(env, p, text) {
-  const isVid = /\.(mp4|mov|webm)(\?|$)/i.test(p.media_url || "");
-  const url = isVid ? `https://graph.facebook.com/v21.0/${env.FB_PAGE_ID}/videos` : `https://graph.facebook.com/v21.0/${env.FB_PAGE_ID}/feed`;
+  if (mediaList(p).length > 1) p = { ...p, media_url: mediaList(p)[0] };
+  const isVid = /\.(mp4|mov|webm)(\?|$)/i.test(p.media_url || ""), isImg = /\.(png|jpe?g|webp)(\?|$)/i.test(p.media_url || "");
+  const G = `https://graph.facebook.com/v21.0/${env.FB_PAGE_ID}`;
+  const url = isVid ? `${G}/videos` : isImg ? `${G}/photos` : `${G}/feed`;
   const f = new URLSearchParams({ access_token: env.FB_PAGE_TOKEN });
   if (isVid) {
     f.set("file_url", p.media_url);
     f.set("description", text);
+  } else if (isImg) {
+    f.set("url", p.media_url);
+    f.set("caption", text);
   } else f.set("message", text);
   const r = await fetch(url, { method: "POST", body: f });
   const j = await r.json();
   if (!j.id) throw new Error("facebook " + JSON.stringify(j).slice(0, 200));
-  return { id: j.id, done: true };
+  return { id: j.post_id || j.id, done: true };
 }
 async function postTelegram(env, p, text) {
   const isVid = /\.(mp4|mov|webm)(\?|$)/i.test(p.media_url || "");
@@ -810,10 +865,19 @@ async function publishDue(env, s) {
     }
     if (p.status === "processing" && now() - p.scheduled_at < 6e4) continue;
     try {
-      const text = p.platform === "instagram" ? String(p.body || "").replace(/\{LINK\}/g, "\u{1F449} pautan di bio") : postText(p, site);
+      const sp = (p.platform === "threads" || p.platform === "facebook") && s.link_in_reply !== "0" ? splitLink(p.body) : { main: p.body, reply: "" };
+      const text = p.platform === "instagram" ? String(p.body || "").replace(/\{LINK\}/g, "\u{1F449} pautan di bio") : postText({ ...p, body: sp.main }, site);
       const res = p.platform === "threads" ? await postThreads(env, p, text) : p.platform === "facebook" ? await postFacebook(env, p, text) : p.platform === "instagram" ? await postInstagram(env, p, text) : await postTelegram(env, p, text);
       if (res.done) {
-        await env.DB.prepare("UPDATE posts SET status='posted', posted_at=?, ext_id=?, error=NULL WHERE id=?").bind(now(), res.id, p.id).run();
+        let note = null;
+        if (sp.reply) {
+          try {
+            await postReply(env, p.platform, res.id, postText({ ...p, body: sp.reply }, site));
+          } catch (e) {
+            note = clip(e.message || e, 300);
+          }
+        }
+        await env.DB.prepare("UPDATE posts SET status='posted', posted_at=?, ext_id=?, error=? WHERE id=?").bind(now(), res.id, note, p.id).run();
         n++;
       } else await env.DB.prepare("UPDATE posts SET status='processing', ext_id=? WHERE id=?").bind(res.id, p.id).run();
     } catch (e) {
@@ -828,7 +892,7 @@ function fill(t, v) {
 async function sendDueEmails(env, s) {
   if (!(env.BREVO_API_KEY || env.RESEND_API_KEY) || !s.email_from) return;
   const site = siteUrl(env, s);
-  const { results } = await env.DB.prepare("SELECT e.*, l.name lname, l.unsub, l.bought, l.child_age FROM emails e LEFT JOIN leads l ON l.id=e.lead_id WHERE e.status='queued' AND e.send_at<=? ORDER BY e.send_at LIMIT 20").bind(now()).all();
+  const { results } = await env.DB.prepare("SELECT e.*, l.name lname, l.unsub, l.bought, l.child_age FROM emails e LEFT JOIN leads l ON l.id=e.lead_id WHERE e.status='queued' AND e.send_at<=? ORDER BY e.send_at LIMIT 10").bind(now()).all();
   const tpl = parseJ(s.nurture_tpl, null) || NURTURE_DEFAULT;
   const price = rm((await priceFor(env, s, null)).amount);
   for (const e of results) {
@@ -921,9 +985,10 @@ async function brainState(env, agent) {
   const ov = await overview(env);
   const all = (sql, ...b) => env.DB.prepare(sql).bind(...b).all().then((r) => r.results);
   const month = mytDay().slice(0, 7);
-  const [posts, tplStats, angles, vars, leadsHot, leadsNew, affTop, flowUse, flowQ, packs, learnings, plans, runs, props, prompt, itemStats, appEv, coupons, emailStats] = await Promise.all([
+  const [posts, tplStats, fmtStats, angles, vars, leadsHot, leadsNew, affTop, flowUse, flowQ, packs, learnings, plans, runs, props, prompt, itemStats, appEv, coupons, emailStats] = await Promise.all([
     all("SELECT id,platform,angle,hook,substr(body,1,280) body,status,scheduled_at,posted_at,clicks,leads,sales,visual,views,likes,comments,shares FROM posts WHERE created>? ORDER BY id DESC LIMIT 80", now() - 10 * DAY),
     all("SELECT json_extract(visual,'$.k') kind, json_extract(visual,'$.t') template, COUNT(*) posts, SUM(clicks) clicks, SUM(leads) leads, SUM(sales) sales, SUM(views) views, SUM(likes) likes, SUM(comments) comments, SUM(shares) shares FROM posts WHERE visual IS NOT NULL AND status='posted' AND posted_at>? GROUP BY kind, template", now() - 45 * DAY),
+    all("SELECT json_extract(visual,'$.f') format, COUNT(*) posts, SUM(clicks) clicks, SUM(leads) leads, SUM(sales) sales, SUM(views) views, SUM(likes) likes, SUM(comments) comments, SUM(shares) shares FROM posts WHERE json_extract(visual,'$.f') IS NOT NULL AND status='posted' AND posted_at>? GROUP BY format", now() - 45 * DAY),
     all("SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC"),
     all("SELECT id,slot,text,status,views,leads,conv,created FROM variants WHERE status='live'"),
     all("SELECT id,name,phone,email,child_age,stage,score,src,created,contacted,wa_msg FROM leads WHERE bought=0 AND unsub=0 ORDER BY (stage='checkout') DESC, score DESC, created DESC LIMIT 25"),
@@ -978,7 +1043,8 @@ async function brainState(env, agent) {
     integrations: ov.integrations,
     health: ov.health,
     posts,
-    templates: tplStats,
+    templates: tplStats.filter((r) => r.kind !== "text"),
+    formats: fmtStats,
     angles,
     variants: probBest(vars),
     leads: { new_24h: leadsNew.n, hot: leadsHot },

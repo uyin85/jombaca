@@ -141,11 +141,47 @@ def _recent_templates(st, kind, n=2):
     return out
 
 
-def choose_template(st, kind, used_today):
+FORMATS = {
+    "soalan": "Soalan terbuka yang ibu bapa mudah jawab dalam komen (pengalaman atau pilihan). Tiada jualan, tiada pautan.",
+    "pendapat": "Pendapat ringan tentang mendidik anak membaca yang mengundang setuju/tak setuju. Sopan. Tiada jualan, tiada pautan.",
+    "tips": "Tips praktikal yang orang mahu simpan & kongsi. Boleh sebut Jom Baca sekali secara halus. Tiada pautan.",
+    "cerita": "Kisah ringkas yang relatable (situasi harian ibu bapa & anak), pengakhiran hangat. Tiada jualan, tiada pautan.",
+    "kuiz": "Kuiz/teka (suku kata, perkataan, emoji): minta jawapan di komen. Tiada pautan.",
+    "promo": "Jualan jujur: masalah → cara Jom Baca bantu → ajak cuba percuma. {LINK} HANYA pada baris terakhir.",
+}
+FORMAT_TPL = {
+    "kuiz": {"image": ["teka", "cabaran"], "video": ["teka", "pantas"]},
+    "tips": {"image": ["carousel", "tips"], "video": ["tips"]},
+    "cerita": {"image": ["banding", "soalan"], "video": ["bina"]},
+    "soalan": {"image": ["soalan", "banding"], "video": ["teka", "bina"]},
+    "pendapat": {"image": ["soalan"], "video": ["bina"]},
+    "promo": {"image": ["soalan", "banding", "cabaran"], "video": ["bina", "pantas", "teka"]},
+}
+
+
+def choose_format(st, used_today):
+    """Pilih format bukan-promo: lebih kerap yang menarik engagement, elak ulang dalam hari yang sama."""
+    names = [f for f in FORMATS if f != "promo"]
+    stats = {r.get("format"): r for r in st.get("formats", [])}
+    w = []
+    for f in names:
+        r = stats.get(f) or {}
+        n = r.get("posts") or 0
+        avg = eng({k: r.get(k) or 0 for k in ("sales", "leads", "clicks", "likes", "comments", "shares", "views")}) / max(1, n)
+        x = (1 + avg) ** 0.5 * (2.0 if n < 3 else 1.0)
+        if used_today.count(f) >= 2 or (used_today and used_today[-1] == f):
+            x *= 0.1
+        w.append(x)
+    return random.choices(names, weights=w)[0]
+
+
+def choose_template(st, kind, used_today, allowed=None):
     """Pilih templat: lebih kerap yang berprestasi (purata markah), bonus untuk yang jarang diuji,
     penalti untuk yang baru digunakan (elak penonton bosan)."""
     from . import media
     names = list((media.VIDEO_TEMPLATES if kind == "video" else media.IMAGE_TEMPLATES).keys())
+    if allowed:
+        names = [n for n in names if n in allowed] or names
     stats = {r.get("template"): r for r in st.get("templates", []) if r.get("kind") == kind}
     recent = set(_recent_templates(st, kind)) | set(used_today)
     weights = []
@@ -160,8 +196,24 @@ def choose_template(st, kind, used_today):
     return random.choices(names, weights=weights)[0]
 
 
+def assign_formats(st, jobs):
+    """Peraturan 80/20: kira-kira 1 daripada 5 post ialah promo (sekurang-kurangnya 1 sehari), selebihnya nilai/engagement."""
+    n = len(jobs)
+    k = max(1, round(n * 0.2))
+    pref = [j for j in jobs if j["platform"] in ("threads", "facebook")] + [j for j in jobs if j["platform"] not in ("threads", "facebook")]
+    promo = set(id(j) for j in random.sample(pref[: max(k, min(len(pref), k * 2))], k))
+    used = []
+    for j in jobs:
+        if id(j) in promo:
+            j["format"] = "promo"
+        else:
+            j["format"] = choose_format(st, used)
+            used.append(j["format"])
+    return jobs
+
+
 def assign_visuals(st, jobs):
-    """Tetapkan jenis media & templat untuk setiap slot sebelum LLM menulis."""
+    """Tetapkan jenis media & templat untuk setiap slot sebelum LLM menulis (padan dengan format)."""
     vids, imgs, used = MAX_VIDEOS, MAX_IMAGES, {"image": [], "video": []}
     order = sorted(jobs, key=lambda j: {"tiktok": 0, "reels": 0, "instagram": 1}.get(j["platform"], 2))
     ig_n = 0
@@ -183,7 +235,12 @@ def assign_visuals(st, jobs):
         if kind == "none":
             j["visual"] = {"type": "none"}
             continue
-        t = choose_template(st, kind, used[kind])
+        allowed = list(FORMAT_TPL.get(j.get("format"), {}).get(kind, []))
+        if pf not in ("instagram", "threads") and "carousel" in allowed:
+            allowed.remove("carousel")
+        if pf in ("instagram", "threads") and j.get("format") == "tips" and kind == "image":
+            allowed = ["carousel"]
+        t = choose_template(st, kind, used[kind], allowed)
         used[kind].append(t)
         vids -= kind == "video"
         imgs -= kind == "image"
@@ -200,6 +257,8 @@ def attach_media(hq, st, rows):
     out = []
     for r in rows:
         v = r.pop("_visual", None)
+        fmt = r.pop("_format", None)
+        r["visual"] = {"k": "text", "t": "", "f": fmt} if fmt else None
         pf = r["platform"]
         if isinstance(v, dict) and pf in ("tiktok", "reels") and v.get("type") != "none":
             v["type"] = "video"
@@ -214,7 +273,7 @@ def attach_media(hq, st, rows):
         url = media.make(spec, host, hq) if spec else None
         if url:
             r["media_url"] = url
-            r["visual"] = {"k": spec["type"], "t": spec["template"]}
+            r["visual"] = {"k": spec["type"], "t": spec["template"], "f": fmt}
             nv += spec["type"] == "video"
             ni += spec["type"] == "image"
         if pf == "instagram" and not url:
@@ -316,6 +375,7 @@ def agent_social(hq, st):
     mix = angle_mix(st, len(slots))
     jobs = [{"slot": i, "platform": pf, "time": t.strftime("%a %H:%M"), "angle": a} for i, ((pf, t), a) in enumerate(zip(slots, mix))]
     from . import media
+    assign_formats(st, jobs)
     if media.available():
         assign_visuals(st, jobs)
     posted = [p for p in st["posts"] if p.get("status") == "posted"]
@@ -334,11 +394,16 @@ PRESTASI TEMPLAT VISUAL: {compact(st.get('templates', []), 1200)}
 
 Panduan hook: baris pertama mesti buat ibu bapa berhenti scroll dalam 2 saat. Gunakan formula yang terbukti di atas, tetapi uji SATU gaya baharu setiap hari (soalan, angka, cerita ringkas, kesilapan biasa, cabaran) supaya kita terus belajar.
 
-Panduan platform:
-- threads: ≤ 450 aksara. Hook baris pertama yang buat ibu bapa berhenti scroll. Separuh post letak {{LINK}} di hujung, separuh lagi tiada pautan (nilai/soalan untuk engagement).
-- facebook: 400 hingga 900 aksara, cerita/tips + CTA dengan {{LINK}}.
-- telegram: tips ringkas + {{LINK}}.
-- instagram: kapsyen 300 hingga 800 aksara + 5 hingga 8 hashtag. JANGAN letak {{LINK}} (IG tak boleh klik pautan); tulis "pautan di bio". WAJIB ada visual.
+FORMAT (setiap SLOT sudah ada "format"; IKUT dengan tepat, ini peraturan 80/20 supaya akaun tak nampak macam iklan):
+{json.dumps(FORMATS, ensure_ascii=False)}
+PRESTASI FORMAT: {compact(st.get('formats', []), 800)}
+
+Panduan platform (format yang mudah tular):
+- threads: PENDEK. 1 hingga 4 baris, maks 300 aksara, nada berbual macam kawan, tiada hashtag atau 1 sahaja. Akhiri dengan soalan yang mudah dijawab. Untuk promo: {{LINK}} pada baris terakhir sendirian (sistem akan alihkan ke balasan pertama supaya jangkauan tak jatuh).
+- facebook: 3 hingga 6 perenggan pendek, bercerita atau tips, ayat terakhir soalan yang mengundang komen. Untuk promo: {{LINK}} pada baris terakhir sendirian (sistem alih ke komen pertama).
+- telegram: tips ringkas. Promo sahaja boleh ada {{LINK}}.
+- instagram: kapsyen padat 300 hingga 800 aksara, ajak "Simpan 💾 & kongsi dengan pasangan", 5 hingga 8 hashtag. JANGAN letak {{LINK}}; untuk promo tulis "pautan di bio". WAJIB ada visual.
+- Post bukan promo TIDAK boleh ada {{LINK}} dan jangan berakhir dengan ajakan beli.
 - tiktok / reels: SKRIP VIDEO 20 hingga 40 saat untuk dirakam/diedit oleh Azrin (rakaman skrin app + suara latar, atau klip Flow). Format body:
   HOOK (0-3s): ...\\nBABAK: 1) ... 2) ... 3) ...\\nTEKS ATAS SKRIN: ...\\nSUARA LATAR: ...\\nKAPSYEN: ... #hashtag (5 hingga 8 hashtag Malaysia relevan)\\nCTA: "Link di bio"
 
@@ -373,7 +438,9 @@ Templat video: {json.dumps(media.VIDEO_TEMPLATES, ensure_ascii=False)}
             vis = {**vis, "type": want["type"], "template": want["template"]}
         elif want:
             vis = {"type": "none"}
-        rows.append({"platform": pf, "angle": re.sub(r"[^a-z0-9_]", "", (p.get("angle") or j["angle"] or "umum").lower())[:40] or "umum", "hook": p.get("hook", "")[:200], "body": body, "scheduled_at": ts(t), "_visual": vis})
+        if j.get("format") and j["format"] != "promo":
+            body = "\n".join(l for l in body.split("\n") if "{LINK}" not in l).strip()  # bukan promo: buang pautan
+        rows.append({"platform": pf, "angle": re.sub(r"[^a-z0-9_]", "", (p.get("angle") or j["angle"] or "umum").lower())[:40] or "umum", "hook": p.get("hook", "")[:200], "body": body, "scheduled_at": ts(t), "_visual": vis, "_format": j.get("format")})
     rows = attach_media(hq, st, rows)
     if out.get("new_angles"):
         hq.write("angles", "social", rows=out["new_angles"][:3])
@@ -598,6 +665,7 @@ POST TERBAIK: {compact(top, 2500)}
 POST TERLEMAH: {compact(bottom, 1500)}
 VARIAN: {compact(st['variants'], 2000)}
 PRESTASI TEMPLAT VISUAL (gambar/video): {compact(st.get('templates', []), 1500)}
+PRESTASI FORMAT (soalan/pendapat/tips/cerita/kuiz/promo): {compact(st.get('formats', []), 800)}
 (post ada medan views/likes/comments/shares dari Threads, FB, IG: gunakan untuk menilai hook & templat mana yang menarik perhatian)
 STATISTIK EMEL: {compact(st.get('email_stats', []), 800)}
 LARIAN AGEN (ralat?): {compact([{k: r[k] for k in ('agent', 'status', 'summary', 'error')} for r in st['runs'][:16]], 2500)}

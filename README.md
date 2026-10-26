@@ -207,6 +207,7 @@ HQ_URL=http://127.0.0.1:8787 BRAIN_KEY=b BRAIN_DRY=1 GEMINI_API_KEY=... python -
 
 ## Log perubahan
 
+- **v2.6 (26 Okt 2026):** peraturan 80/20 (format soalan, pendapat, tips, cerita, kuiz vs promo, dipilih ikut prestasi), panduan khusus setiap platform, pautan promo dialih ke balasan/komen pertama (Threads & FB), carousel 5 hingga 7 slaid untuk IG & Threads, FB kini post gambar sebenar (/photos), fakta produk tepat + jaring pembetul fakta.
 - **v2.5 (26 Okt 2026):** 5 templat gambar (soalan, tips, teka, banding, cabaran) dan 4 templat video (bina, teka 3-2-1, tips, baca pantas), latar/bentuk/warna/muzik dirawak setiap kali. Agen pilih templat ikut prestasi (elak ulangan). Statistik view/like/komen/share dari Threads, FB & IG dikumpul setiap jam dan digunakan untuk menilai hook, sudut dan templat.
 - **v2.4 (26 Okt 2026):** agen Sosial kini melukis **kad gambar** (1080×1350) dan **video hook** (1080×1920, muzik latar kanak-kanak & kesan bunyi disintesis sendiri, bebas hak cipta) secara automatik di Modal (Chromium + ffmpeg, templat berjenama, tiada AI imej). Auto-post ke **Instagram** (gambar & Reels) melalui token FB Page. Threads & FB Page disambung dengan tampal token di /admin → Tetapan → Media sosial.
 - **v2.3 (25 Okt 2026):** pengguji dapat Pro percubaan 10 hari dan wajib muat naik 2 video (anak guna app + testimoni) di /pengguji-hantar; pemilik semak & luluskan di /admin → 🧪 Pengguji. Video disimpan peribadi dalam R2 (pautan bertandatangan, dipadam auto selepas `video_keep_days`). Pengawas sistem + amaran Telegram.

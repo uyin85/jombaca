@@ -32,6 +32,7 @@ IMAGE_TEMPLATES = {
     "teka": "Teka perkataan: emoji besar + suku kata pertama, selebihnya '?'. Medan: headline, emoji, tiles, word",
     "banding": "Sebelum vs Selepas. Medan: headline, before (≤ 60 aksara), after (≤ 60 aksara)",
     "cabaran": "Cabaran baca: 3-4 perkataan dipecah suku kata. Medan: headline, words (cth ['bo-la','ku-cing','ma-ta'])",
+    "carousel": "Carousel 5-7 slaid untuk IG/Threads (paling kerap disimpan & dikongsi): kulit + 1 slaid setiap tip + slaid penutup. Medan: headline, points (4-5 tip, setiap satu ≤ 70 aksara)",
 }
 VIDEO_TEMPLATES = {
     "bina": "Suku kata muncul satu-satu lalu bercantum jadi perkataan. Medan: headline, sub, tiles, word",
@@ -105,7 +106,7 @@ def clean_spec(v, fallback_hook=""):
     word = re.sub(r"[^a-z]", "", str(v.get("word") or "").lower())
     if not tiles or "".join(tiles) != word:
         tiles, word = [], ""
-    points = [_txt(p, 60) for p in (v.get("points") or []) if _txt(p, 60)][:3]
+    points = [_txt(p, 80) for p in (v.get("points") or []) if _txt(p, 80)][:5]
     words = [w for w in (_syl(x) for x in (v.get("words") or [])) if w][:4]
     emoji = _txt(v.get("emoji"), 8)
     spec = {"type": kind, "headline": headline, "sub": _txt(v.get("sub"), 110), "tiles": tiles, "word": word,
@@ -113,7 +114,8 @@ def clean_spec(v, fallback_hook=""):
     t = str(v.get("template") or "").lower()
     ok = {
         "soalan": True, "bina": True,
-        "tips": len(points) == 3,
+        "tips": len(points) >= 3,
+        "carousel": len(points) >= 3,
         "teka": bool(emoji and tiles),
         "banding": bool(spec["before"] and spec["after"]),
         "cabaran": len(words) >= 3, "pantas": len(words) >= 3,
@@ -205,7 +207,7 @@ def _image_main(spec, st):
     t = spec["template"]
     if t == "tips":
         return '<div class="card" style="display:grid;gap:30px">' + "".join(
-            f'<div class="pt">{_tile(str(i + 1), 96, i, st)}<span>{html.escape(p)}</span></div>' for i, p in enumerate(spec["points"])) + "</div>"
+            f'<div class="pt">{_tile(str(i + 1), 96, i, st)}<span>{html.escape(p)}</span></div>' for i, p in enumerate(spec["points"][:3])) + "</div>"
     if t == "teka":
         shown = [spec["tiles"][0]] + ["?"] * (len(spec["tiles"]) - 1)
         return f'<div style="display:grid;gap:30px;justify-items:center"><div class="emo">{html.escape(spec["emoji"])}</div><div class="row">{_tiles(shown, 170, st, plus=False)}</div><div style="font:600 40px JBDisplay,system-ui;color:#5d5780">Jawapan dalam kapsyen 👇</div></div>'
@@ -259,7 +261,7 @@ def _video_stage(spec, st, t0):
         return h, ev, rv + 2.0
     if t == "tips":
         h = f'<div class="card" style="display:grid;gap:40px;width:920px;font-size:50px" data-at="{max(0, t0 - 0.4):.2f}" data-anim="rise">'
-        for i, p in enumerate(spec["points"]):
+        for i, p in enumerate(spec["points"][:3]):
             at = t0 + i * 1.5
             h += f'<div class="pt" data-at="{at:.2f}" data-anim="rise">{_tile(str(i + 1), 96, i, st)}<span>{html.escape(p)}</span></div>'
             ev.append((at, "pop", i))
@@ -325,7 +327,51 @@ window.seek=seek; seek(0);
     return page, {"total": total, "events": ev}
 
 
+def carousel_pages(spec, site_host, rng=None):
+    """Slaid carousel: kulit, satu slaid setiap tip, penutup. Gaya sama untuk semua slaid."""
+    rng = rng or random.Random()
+    st = _style(rng)
+    pts = spec["points"]
+    head = f"""<!doctype html><html><head><meta charset="utf-8"><style>{_fontface()}{BASE_CSS}
+html,body{{width:{W_IMG}px;height:{H_IMG}px}}
+body{{{_bg_css(st)}display:flex;flex-direction:column;justify-content:space-between;padding:80px 76px 76px}}
+.big{{font:600 {_hsize(spec["headline"], 104)}px/1.06 JBDisplay,system-ui;letter-spacing:-.5px}}
+.num{{width:190px;height:190px;font-size:110px}}
+.tip{{font:600 70px/1.15 JBDisplay,system-ui;letter-spacing:-.3px}}
+.dots{{display:flex;gap:12px}} .dots i{{width:18px;height:18px;border-radius:50%;background:#2b235033}} .dots i.on{{background:{st["acc"]}}}
+</style></head><body>{_confetti(st, random.Random(1), W_IMG, H_IMG)}"""
+    n = len(pts) + 2
+
+    def foot(k, right=""):
+        dots = "".join(f'<i class="{"on" if j == k else ""}"></i>' for j in range(n))
+        return f'<div style="position:relative;display:flex;justify-content:space-between;align-items:center"><div class="dots">{dots}</div><span style="font:600 38px JBDisplay,system-ui;color:#5d5780">{right}</span></div>'
+    pages = [head + f'<div style="position:relative">{_brand()}</div><div class="big" style="position:relative">{html.escape(spec["headline"])}</div>' + foot(0, "Leret 👉") + "</body></html>"]
+    for i, p in enumerate(pts):
+        pages.append(head + f'<div style="position:relative">{_brand()}</div><div style="position:relative;display:grid;gap:50px">{_tile(str(i + 1), 190, i, st, "class=num")}<div class="tip">{html.escape(p)}</div></div>' + foot(i + 1, "👉") + "</body></html>")
+    pages.append(head + f'<div style="position:relative">{_brand()}</div><div style="position:relative;display:grid;gap:40px"><div class="tip">💾 Simpan post ini untuk rujukan</div><div class="tip">📤 Kongsi dengan pasangan atau kawan</div><div style="font-size:44px;line-height:1.35;color:#5d5780">Cuba 6 tahap pertama percuma:</div><span class="url" style="width:max-content">{html.escape(site_host)}</span></div>' + foot(n - 1) + "</body></html>")
+    return pages
+
+
 # ---------------------------------------------------------------- render
+def render_carousel(spec, site_host, out_dir, rng=None):
+    from playwright.sync_api import sync_playwright
+    files = []
+    with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
+        b = p.chromium.launch()
+        pg = b.new_page(viewport={"width": W_IMG, "height": H_IMG})
+        for i, h in enumerate(carousel_pages(spec, site_host, rng)):
+            f = os.path.join(tmp, f"s{i}.html")
+            open(f, "w", encoding="utf-8").write(h)
+            pg.goto("file://" + f)
+            pg.evaluate("document.fonts.ready")
+            pg.wait_for_timeout(100)
+            out = os.path.join(out_dir, f"slaid{i}.png")
+            pg.screenshot(path=out, type="png")
+            files.append(out)
+        b.close()
+    return files
+
+
 def render_image(spec, site_host, out, rng=None):
     from playwright.sync_api import sync_playwright
     with tempfile.TemporaryDirectory() as tmp:
@@ -385,6 +431,12 @@ def make(spec, site_host, hq):
     ext, ctype = ("mp4", "video/mp4") if spec["type"] == "video" else ("png", "image/png")
     with tempfile.TemporaryDirectory() as tmp:
         out = os.path.join(tmp, "m." + ext)
+        if spec["type"] == "image" and spec["template"] == "carousel":
+            try:
+                return "|".join(hq.upload(f, "image/png") for f in render_carousel(spec, site_host, tmp))
+            except Exception as e:  # noqa: BLE001
+                print("carousel gagal:", e)
+                return None
         try:
             (render_video if spec["type"] == "video" else render_image)(spec, site_host, out)
             return hq.upload(out, ctype)
