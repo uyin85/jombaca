@@ -72,7 +72,9 @@ async audio(m){const j=await act('audio_list');const M=j.map||{};const keys=Obje
  m.insertAdjacentHTML('beforeend',\`<div class="card"><h2>\u{1F524} Suku kata &amp; perkataan (\${uk.length})</h2><p class="mut">Semua suku kata dan perkataan dalam 40 tahap. \${up?\`<span class="tag warn">\u23F3 \${up} menunggu dijana</span>\`:'<span class="tag ok">\u2713 Semua siap</span>'}</p><div class="row"><input id="uq" placeholder="Cari: ca, ga, cawan\u2026" style="flex:1"></div><div id="ul" class="tw" style="margin-top:8px"></div></div>\`);
  const vopts=v=>[['','(lalai)'],['ms-MY-YasminNeural','Yasmin'],['ms-MY-OsmanNeural','Osman'],['id-ID-GadisNeural','Gadis']].map(([x,l])=>\`<option value="\${x}" \${(v||'')===x?'selected':''}>\${l}</option>\`).join('');
  const drawU=()=>{const q=($('#uq').value||'').trim().toLowerCase();const rows=uk.filter(k=>!q||k.startsWith(q)||k.includes(q)).slice(0,80);
-  $('#ul').innerHTML=\`<table><tr><th>Unit</th><th>Dengar</th><th>Ejaan sebutan</th><th>Suara</th><th></th></tr>\${rows.map(k=>\`<tr><td><b>\${esc(k)}</b></td><td>\${U[k].u?\`<audio controls preload="none" src="\${esc(U[k].u)}" style="height:34px"></audio>\`:'<span class="mut">belum</span>'}\${U[k].p?' <span class="tag warn">\u23F3</span>':''}</td><td><input data-uk="\${esc(k)}" value="\${esc(U[k].t)}" style="width:130px"></td><td><select data-uv="\${esc(k)}">\${vopts(U[k].v)}</select></td><td><button data-ur="\${esc(k)}">Jana semula</button></td></tr>\`).join('')}</table>\${uk.length&&rows.length===80?'<p class="mut">80 pertama dipaparkan. Taip untuk cari.</p>':''}\`;
+  $('#ul').innerHTML=\`<div class="row" style="margin-bottom:8px"><button class="p" id="ujv">\u{1F3A7} Jana pilihan bunyi untuk \${rows.length} unit dipaparkan</button></div><table><tr><th>Unit</th><th>Dengar</th><th>Ejaan sebutan</th><th>Suara</th><th></th></tr>\${rows.map(k=>\`<tr><td><b>\${esc(k)}</b>\${U[k].l?\`<div class="mut" style="font-size:11px">\${esc(U[k].l)}</div>\`:''}</td><td>\${U[k].u?\`<audio controls preload="none" src="\${esc(U[k].u)}" style="height:34px"></audio>\`:'<span class="mut">belum</span>'}\${U[k].p?' <span class="tag warn">\u23F3</span>':''}\${U[k].vq?' <span class="tag warn">\u23F3 pilihan</span>':''}\${(U[k].alt||[]).length?\`<details style="margin-top:4px"><summary class="mut">\u{1F3A7} \${U[k].alt.length} pilihan bunyi: tekan Pilih pada yang betul</summary>\${U[k].alt.map(a=>\`<div class="row" style="margin:4px 0"><audio controls preload="none" src="\${esc(a.u)}" style="height:30px"></audio><span class="mut" style="font-size:12px">\${esc(a.l)}</span><button data-pk="\${esc(k)}" data-pu="\${esc(a.u)}" data-pl="\${esc(a.l)}">Pilih</button></div>\`).join('')}</details>\`:''}</td><td><input data-uk="\${esc(k)}" value="\${esc(U[k].t)}" style="width:130px"></td><td><select data-uv="\${esc(k)}">\${vopts(U[k].v)}</select></td><td><button data-ur="\${esc(k)}">Jana semula</button></td></tr>\`).join('')}</table>\${uk.length&&rows.length===80?'<p class="mut">80 pertama dipaparkan. Taip untuk cari.</p>':''}\`;
+  $('#ujv').onclick=async()=>{const b=$('#ujv');b.disabled=true;const j=await act('audio_variants',{keys:rows});b.textContent=\`\u23F3 \${j.n} unit dijadualkan: pilihan siap pada larian otak seterusnya\`};
+  $('#ul').querySelectorAll('[data-pk]').forEach(b=>b.onclick=async()=>{await act('audio_pick',{key:b.dataset.pk,url:b.dataset.pu,label:b.dataset.pl});b.textContent='\u2713 Dipilih';b.disabled=true});
   $('#ul').querySelectorAll('[data-ur]').forEach(b=>b.onclick=async()=>{const k=b.dataset.ur;b.disabled=true;await act('audio_unit_set',{key:k,text:$('#ul').querySelector(\`[data-uk="\${k}"]\`).value,voice:$('#ul').querySelector(\`[data-uv="\${k}"]\`).value});b.textContent='\u23F3 Dijadualkan'});};
  $('#uq').oninput=drawU; drawU();
  $('#av').value=j.voice||'ms-MY-YasminNeural';
@@ -1106,7 +1108,10 @@ async function brainWrite(env, kind, d, agent) {
       const am = audioMap(s), aj = d.via === "modal" ? Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: v.v || s.audio_voice })) : [];
       if (d.via === "modal") {
         const au = parseJ(s.audio_units, {}) || {};
-        for (const [key, v] of Object.entries(au)) if (v.p && aj.length < 80) aj.push({ key, text: v.t, voice: v.v || s.audio_voice, unit: 1 });
+        for (const [key, v] of Object.entries(au)) {
+          if (v.p && aj.length < 80) aj.push({ key, text: v.t, voice: v.v || s.audio_voice, unit: 1 });
+          if (v.vq && aj.length < 80) aj.push({ key, text: v.t, unit: 1, variants: 1 });
+        }
       }
       if (!s.audio_map) await setSetting(env, "audio_map", JSON.stringify(am));
       return { ok: true, media_test: mt, audio_jobs: aj };
@@ -1114,7 +1119,10 @@ async function brainWrite(env, kind, d, agent) {
     case "audio_jobs": {
       const am = audioMap(s), au = parseJ(s.audio_units, {}) || {};
       const jobs = Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: v.v || s.audio_voice }));
-      for (const [key, v] of Object.entries(au)) if (v.p) jobs.push({ key, text: v.t, voice: v.v || s.audio_voice, unit: 1 });
+      for (const [key, v] of Object.entries(au)) {
+        if (v.p) jobs.push({ key, text: v.t, voice: v.v || s.audio_voice, unit: 1 });
+        if (v.vq) jobs.push({ key, text: v.t, unit: 1, variants: 1 });
+      }
       return { ok: true, jobs };
     }
     case "audio_units_add": {
@@ -1129,6 +1137,14 @@ async function brainWrite(env, kind, d, agent) {
       }
       await setSetting(env, "audio_units", JSON.stringify(au));
       return { ok: true, added: n, total: Object.keys(au).length };
+    }
+    case "audio_alt": {
+      const au = parseJ(s.audio_units, {}) || {}, k = clip(d.key, 30);
+      if (!au[k]) return { ok: false };
+      au[k].alt = (Array.isArray(d.alts) ? d.alts : []).slice(0, 10).map((a) => ({ u: clip(a.u, 300), l: clip(a.l, 60) }));
+      delete au[k].vq;
+      await setSetting(env, "audio_units", JSON.stringify(au));
+      return { ok: true };
     }
     case "audio_unit": {
       const au = parseJ(s.audio_units, {}) || {}, k = clip(d.key, 30);
@@ -1819,6 +1835,27 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
           return J(await threadsConnect(env, d.token).catch((e) => ({ ok: false, error: e.message })));
         case "fb_connect":
           return J(await fbConnect(env, d.token, d.page).catch((e) => ({ ok: false, error: e.message })));
+        case "audio_variants": {
+          const au = parseJ(s.audio_units, {}) || {};
+          let n = 0;
+          for (const k of (d.keys || []).slice(0, 60)) if (au[k]) {
+            au[k].vq = 1;
+            n++;
+          }
+          await setSetting(env, "audio_units", JSON.stringify(au));
+          return J({ ok: true, n });
+        }
+        case "audio_pick": {
+          const au = parseJ(s.audio_units, {}) || {}, k = clip(d.key, 30);
+          if (au[k]) {
+            au[k].u = clip(d.url, 300);
+            au[k].p = 0;
+            au[k].l = clip(d.label, 60);
+            await setSetting(env, "audio_units", JSON.stringify(au));
+            await setSetting(env, "audio_v", now());
+          }
+          break;
+        }
         case "audio_unit_set": {
           const au = parseJ(s.audio_units, {}) || {}, k = clip(d.key, 30);
           if (au[k]) {

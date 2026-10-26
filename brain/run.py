@@ -142,6 +142,27 @@ def audio_jobs(hq, jobs):
     with tempfile.TemporaryDirectory() as tmp:
         for j in jobs[:600]:
             f = f"{tmp}/{j['key']}.mp3"
+            if j.get("variants"):
+                alts = []
+                t = j["text"]
+                spells = [t, t + "h"]
+                if "e" in t:
+                    spells += [t.replace("e", "ê"), t.replace("e", "ə")]
+                for sp in spells:
+                    for vname, vid in (("Yasmin", "ms-MY-YasminNeural"), ("Osman", "ms-MY-OsmanNeural"), ("Gadis", "id-ID-GadisNeural")):
+                        g = f"{tmp}/{j['key']}-{len(alts)}.mp3"
+                        try:
+                            asyncio.run(edge_tts.Communicate(sp, vid, rate="-10%").save(g))
+                            if os.path.getsize(g) > 800:
+                                alts.append({"u": hq.upload(g, "audio/mpeg"), "l": f"{vname} · \"{sp}\""})
+                        except Exception:  # noqa: BLE001
+                            pass
+                try:
+                    hq.write("audio_alt", "brain", key=j["key"], alts=alts)
+                    done += 1
+                except Exception as e:  # noqa: BLE001
+                    errs.append(f"{j['key']} varian: {e}")
+                continue
             try:
                 asyncio.run(edge_tts.Communicate(j["text"], j.get("voice") or "ms-MY-YasminNeural", rate="-10%").save(f))
                 url = hq.upload(f, "audio/mpeg")
