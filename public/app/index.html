@@ -1134,10 +1134,16 @@
             if (okk) { finish(true, tryAl); return; }
             if (res.isFinal) finalNoMatch = true;
           }
-          if (finalNoMatch) { say(CFGS.calm ? "Tak apa, cuba lagi ya 🙂" : "Hampir! Sebut sekali lagi 🎤"); S.quiet = setTimeout(() => finish(false, S.acc), long ? 3500 : 2600); }
+          if (finalNoMatch) {
+            /* Android berhenti mendengar selepas setiap bunyi: jangan tamatkan awal. Terus dengar sehingga tetingkap penuh tamat,
+               dan beri sekurang-kurangnya 2.6 hingga 3.5 saat lagi selepas cubaan salah yang lewat. */
+            say(CFGS.calm ? "Tak apa, cuba lagi ya 🙂" : "Hampir! Sebut sekali lagi 🎤");
+            const q = long ? 3500 : 2600, now2 = Date.now();
+            if (S.end - now2 < q) { clearTimeout(S.timer); S.end = now2 + q; S.timer = setTimeout(() => finish(false, S.acc), q); }
+          }
         };
         r.onerror = e => { if (e.error === "not-allowed" || e.error === "service-not-allowed") { say("Benarkan mikrofon 🎤"); S.decided = true; clearTimeout(S.timer); busy = false; $("mic").classList.remove("rec"); } };
-        r.onend = () => { if (S.decided || r.stopped) return; if (Date.now() < S.end - 500) setTimeout(() => { if (!S.decided) startRec(); }, 150); };
+        r.onend = () => { if (S.decided || r.stopped) return; if (Date.now() < S.end - 400) setTimeout(() => { if (!S.decided) startRec(); }, 120); };
         try { r.start(); } catch (e) { setTimeout(() => { if (!S.decided) startRec(); }, 300); }
       };
       S.timer = setTimeout(() => finish(false, S.acc), listenMs);
