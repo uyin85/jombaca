@@ -33,7 +33,7 @@ jobs:
             echo "Bukan waktu agen Sosial ($H:00 MYT). Langkau."
           fi
       - name: Pasang enjin suara (ujian suara sahaja)
-        if: ${{ inputs.agent == 'voice-test' }}
+        if: ${{ inputs.agent == 'voice-test' || inputs.agent == 'audio-now' }}
         run: pip install -q edge-tts==7.3.1 gTTS==2.5.4
       - name: Jalankan agen
         env:

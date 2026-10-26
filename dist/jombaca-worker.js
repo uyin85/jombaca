@@ -799,7 +799,7 @@ async function postTelegram(env, p, text) {
   if (!j.ok) throw new Error("telegram " + JSON.stringify(j).slice(0, 200));
   return { id: String(j.result.message_id), done: true };
 }
-var AUDIO_DEFAULTS = { a: "ah", i: "i", u: "u", e: "eh", o: "o", b: "bi", c: "si", d: "di", f: "eff", g: "ji", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
+var AUDIO_DEFAULTS = { a: "ah", i: "ih", u: "u", e: "eh", o: "o", b: "bi", c: "si", d: "di", f: "eff", g: "ji", h: "eic", j: "jei", k: "kei", l: "el", m: "em", n: "en", p: "pi", q: "kiu", r: "ar", s: "es", t: "ti", v: "vi", w: "dabel yu", x: "eks", y: "wai", z: "zek" };
 function audioMap(s) {
   const m = parseJ(s.audio_map, {}) || {};
   for (const [k, t] of Object.entries(AUDIO_DEFAULTS)) if (!m[k]) m[k] = { t, u: null, p: 1 };
@@ -1099,6 +1099,10 @@ async function brainWrite(env, kind, d, agent) {
       const am = audioMap(s), aj = d.via === "modal" ? Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: s.audio_voice })) : [];
       if (!s.audio_map) await setSetting(env, "audio_map", JSON.stringify(am));
       return { ok: true, media_test: mt, audio_jobs: aj };
+    }
+    case "audio_jobs": {
+      const am = audioMap(s);
+      return { ok: true, jobs: Object.entries(am).filter(([, v]) => v.p).map(([key, v]) => ({ key, text: v.t, voice: s.audio_voice })) };
     }
     case "audio": {
       const am = audioMap(s), k = clip(d.key, 4);

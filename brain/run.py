@@ -150,6 +150,9 @@ def voice_test():
 def main(argv):
     if not argv or argv[0] == "tick":
         tick()
+    elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "audio-now":
+        hq = HQ()
+        audio_jobs(hq, hq.write("audio_jobs", "brain").get("jobs", []))
     elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "voice-test":
         voice_test()
     elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "media-test":
