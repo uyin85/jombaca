@@ -845,15 +845,25 @@
     let dtok = 0, cur = null, auto = false, silent = 0;
 
     /* Audio huruf dijana di pelayan (suara neural Bahasa Melayu), supaya sebutan huruf sama di semua telefon & luar talian. */
-    let AUD = {}; const AUDB = {};
-    try { AUD = JSON.parse(localStorage.getItem("jb_aud") || "{}") || {}; } catch (e) {}
+    let AUD = {}, AUDS = {}; const AUDB = {};
+    try { AUD = JSON.parse(localStorage.getItem("jb_aud") || "{}") || {}; AUDS = JSON.parse(localStorage.getItem("jb_auds") || "{}") || {}; } catch (e) {}
     async function loadAud() {
       const base = location.protocol.indexOf("http") === 0 ? location.origin : "";
       if (!base) return;
-      try { const j = await (await fetch(base + "/api/audio")).json(); if (j && j.m) { AUD = j.m; try { localStorage.setItem("jb_aud", JSON.stringify(AUD)); } catch (e) {} } } catch (e) {}
+      try {
+        const j = await (await fetch(base + "/api/audio")).json();
+        if (j && j.m) { AUD = j.m; AUDS = j.s || {}; try { localStorage.setItem("jb_aud", JSON.stringify(AUD)); localStorage.setItem("jb_auds", JSON.stringify(AUDS)); } catch (e) {} }
+      } catch (e) {}
       for (const [k, u] of Object.entries(AUD)) { try { const b = await (await fetch(u)).blob(); if (b.size > 500) AUDB[k] = URL.createObjectURL(b); } catch (e) {} }
     }
     setTimeout(loadAud, 1200);
+    /* Simpan audio suku kata & perkataan tahap semasa (untuk guna luar talian). */
+    const audSeen = new Set();
+    function prefetchLevelAudio(items) {
+      const keys = new Set();
+      (items || []).forEach(r => { if (typeof r !== "string" || r[0] === "?") return; const p = r.split("|"); const t = (p[0] || "").toLowerCase(); if (/^[a-z]{2,}$/.test(t)) keys.add(t); const w = (p[3] || "").toLowerCase(); if (w) { w.split("-").forEach(x => x && keys.add(x)); keys.add(w.replace(/-/g, "")); } });
+      keys.forEach(k => { const u = AUDS[k]; if (u && !audSeen.has(u)) { audSeen.add(u); fetch(u).catch(() => {}); } });
+    }
     function playOne(file, txt) {
       return new Promise(res => {
         const tts = () => {
@@ -867,7 +877,8 @@
             speechSynthesis.speak(u);
           } catch (e) { res(); }
         };
-        const au = typeof file === "string" && file.length === 1 ? (AUDB[file] || AUD[file]) : null;
+        const fk = typeof file === "string" ? file.toLowerCase() : "";
+        const au = fk.length === 1 ? (AUDB[fk] || AUD[fk]) : (fk ? AUDS[fk] : null);
         if (au) { const a = new Audio(au); a.onended = () => res(); a.onerror = tts; a.play().catch(tts); return; }
         if (!CFG.audio) { tts(); return; }
         const a = new Audio(CFG.audio + "/" + file + ".mp3");
@@ -965,6 +976,7 @@
       const it = item();
       auto = false;
       updateProgress();
+      try { prefetchLevelAudio(LV[L][3]); } catch (e) {}
 
       setPic(CFGS.readfirst ? "❓" : it.e);
 

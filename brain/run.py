@@ -95,6 +95,40 @@ def media_test(exit_after=True):
     return ok
 
 
+def curriculum_units():
+    """Semua suku kata & perkataan dalam 40 tahap (tahap percuma dalam app + tahap Pro dalam core.json)."""
+    import json as _j
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    page = open(os.path.join(root, "public/app/index.html"), encoding="utf-8").read()
+    i = page.index("const LV = [") + len("const LV = ")
+    free, _ = _j.JSONDecoder().raw_decode(page[i:])
+    core = _j.load(open(os.path.join(root, "src/content/core.json"), encoding="utf-8"))
+    units = set()
+
+    def word(w):
+        parts = [p for p in w.strip().lower().split("-") if p]
+        if parts and all(re.fullmatch(r"[a-z]+", p) for p in parts):
+            units.update(parts)
+            units.add("".join(parts))
+    for lv in free + core["levels"]:
+        for it in lv[3]:
+            if it.startswith("?"):
+                continue
+            if "|" in it:
+                t, _e, _c, w = (it.split("|") + ["", "", "", ""])[:4]
+                if len(t) > 1 and re.fullmatch(r"[a-z]+", t.lower()):
+                    units.add(t.lower())
+                if w:
+                    word(w)
+            else:
+                m = re.match(r"^([a-z .,!-]+)", it, re.I)
+                ws = (m.group(1).strip() if m else "").split()
+                if len(ws) <= 4:
+                    for x in ws:
+                        word(x.strip(".,!"))
+    return sorted(u for u in units if len(u) > 1)
+
+
 def audio_jobs(hq, jobs):
     """Jana audio huruf dengan suara neural ms-MY (edge-tts) dan muat naik ke R2."""
     import asyncio
@@ -106,12 +140,12 @@ def audio_jobs(hq, jobs):
         return
     done, errs = 0, []
     with tempfile.TemporaryDirectory() as tmp:
-        for j in jobs[:40]:
+        for j in jobs[:600]:
             f = f"{tmp}/{j['key']}.mp3"
             try:
                 asyncio.run(edge_tts.Communicate(j["text"], j.get("voice") or "ms-MY-YasminNeural", rate="-10%").save(f))
                 url = hq.upload(f, "audio/mpeg")
-                hq.write("audio", "brain", key=j["key"], url=url)
+                hq.write("audio_unit" if j.get("unit") else "audio", "brain", key=j["key"], url=url)
                 done += 1
             except Exception as e:  # noqa: BLE001
                 errs.append(f"{j['key']}: {type(e).__name__}: {str(e)[:160]}")
@@ -152,6 +186,11 @@ def main(argv):
         tick()
     elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "audio-now":
         hq = HQ()
+        try:  # daftar semua suku kata & perkataan kurikulum (fail repo) supaya dijana
+            r = hq.write("audio_units_add", "brain", keys=curriculum_units())
+            print("unit audio:", r)
+        except Exception as e:  # noqa: BLE001
+            print("senarai unit gagal:", e)
         audio_jobs(hq, hq.write("audio_jobs", "brain").get("jobs", []))
     elif argv[0] == "agent" and len(argv) > 1 and argv[1] == "voice-test":
         voice_test()
