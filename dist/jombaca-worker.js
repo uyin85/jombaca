@@ -865,7 +865,7 @@ async function publishDue(env, s) {
     }
     if (p.status === "processing" && now() - p.scheduled_at < 6e4) continue;
     try {
-      const sp = (p.platform === "threads" || p.platform === "facebook") && s.link_in_reply !== "0" ? splitLink(p.body) : { main: p.body, reply: "" };
+      const sp = (p.platform === "threads" || p.platform === "facebook" && s.fb_comment_ok !== "0") && s.link_in_reply !== "0" ? splitLink(p.body) : { main: p.body, reply: "" };
       const text = p.platform === "instagram" ? String(p.body || "").replace(/\{LINK\}/g, "\u{1F449} pautan di bio") : postText({ ...p, body: sp.main }, site);
       const res = p.platform === "threads" ? await postThreads(env, p, text) : p.platform === "facebook" ? await postFacebook(env, p, text) : p.platform === "instagram" ? await postInstagram(env, p, text) : await postTelegram(env, p, text);
       if (res.done) {
@@ -873,8 +873,10 @@ async function publishDue(env, s) {
         if (sp.reply) {
           try {
             await postReply(env, p.platform, res.id, postText({ ...p, body: sp.reply }, site));
+            if (p.platform === "facebook" && s.fb_comment_ok !== "1") await setSetting(env, "fb_comment_ok", "1");
           } catch (e) {
             note = clip(e.message || e, 300);
+            if (p.platform === "facebook") await setSetting(env, "fb_comment_ok", "0");
           }
         }
         await env.DB.prepare("UPDATE posts SET status='posted', posted_at=?, ext_id=?, error=? WHERE id=?").bind(now(), res.id, note, p.id).run();
@@ -1674,7 +1676,7 @@ ${site}/admin \u2192 \u{1F9EA} Pengguji`));
         angles: "SELECT * FROM angles ORDER BY sales DESC, leads DESC, clicks DESC",
         prompts: "SELECT * FROM agent_prompts ORDER BY id DESC LIMIT 50",
         plans: "SELECT * FROM plans ORDER BY day DESC LIMIT 14",
-        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','ig_user_id','ig_checked','media_test_req','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
+        settings: "SELECT * FROM settings WHERE k NOT IN ('lic_secret','schema_v','threads_token','fb_page_token','threads_token_refreshed','threads_token_exp','threads_user_id','fb_page_id','fb_long','ig_user_id','ig_checked','media_test_req','fb_comment_ok','brain_seen','brain_seen_by') AND k NOT LIKE 'wd:%'",
         app: "SELECT k, SUM(n) n FROM stats WHERE day>=date('now','-13 day') AND (k LIKE 'app:%' OR k LIKE 'src:%' OR k LIKE 'ref:%') GROUP BY k ORDER BY n DESC LIMIT 200"
       };
       if (!Q[t]) return bad("t?");
