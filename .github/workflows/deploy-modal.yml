@@ -38,4 +38,7 @@ jobs:
           done
           if [ -n "$GH_ISSUES_TOKEN" ]; then args+=("GITHUB_TOKEN=$GH_ISSUES_TOKEN" "GITHUB_REPO=$REPO"); fi
           modal secret create jombaca "${args[@]}" --force
+          python -m compileall -q brain
           modal deploy brain/modal_app.py
+          # Ujian sebenar dari dalam container Modal dengan Secret yang sama.
+          modal run brain/modal_app.py::network_probe

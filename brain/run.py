@@ -49,7 +49,14 @@ def tick(hq=None):
         for h in hours:
             if 0 <= n.hour - h <= 2:  # tetingkap 3 jam untuk kejar larian yang terlepas
                 slot = f"{n.date().isoformat()}-{h:02d}"
-                if hq.claim(name, slot):
+                try:
+                    claimed = hq.claim(name, slot)
+                except Exception as e:  # noqa: BLE001
+                    # Jangan hentikan seluruh tick jika HQ tidak boleh dihubungi.
+                    # Slot tidak ditandakan berjaya; GitHub Actions/Modal boleh cuba lagi.
+                    print(f"claim gagal {name} ({slot}): {type(e).__name__}: {e}")
+                    continue
+                if claimed:
                     ok = run_agent(hq, name)
                     ran.append(name if ok else name + "(gagal)")
                     if not ok:  # lepaskan slot supaya larian seterusnya (dalam tetingkap 3 jam) cuba semula
